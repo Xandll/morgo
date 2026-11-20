@@ -37,6 +37,16 @@ Die Properties-Datei enthält `storePassword`, `keyPassword` und `keyAlias`. Alt
 
 Ab 1.6.0 hat die App ein eigenes Zertifikat. Eine ältere Installation muss einmal deinstalliert werden.
 
+## Geheimnisse
+
+Einmalig gitleaks 8.30.1 installieren und den Hook aktivieren:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+`.githooks/pre-commit` prüft jede gestagte Änderung. Ein Home-Assistant-Token, ein JWT, ein WebUntis-Secret, eine `otpauth`-URI, ein Keystore, `local.properties`, eine `.env`, ein privater Schlüssel oder ein Passwort brechen den Commit ab. `--no-verify` nicht verwenden. Bei jedem Push und Pull Request prüft die Action `secret-scan` das Repository noch einmal.
+
 ## Updates
 
 Die App liest `https://api.github.com/repos/{owner}/{repo}/releases/latest`, Standard `Xandll/morgo`. Das lässt sich unter Konten ändern und abschalten. Ein neueres Tag `vX.Y.Z` erscheint als Hinweis und Benachrichtigung. Die APK kommt über den DownloadManager, optional mit der Datei `morgo-release.apk.sha256`. Installiert wird nur, wenn die Signatur zur installierten App passt. Android fragt dafür einmal nach der Freigabe „Unbekannte Apps“.

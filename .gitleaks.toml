@@ -1,0 +1,71 @@
+title = "Morgo"
+minVersion = "8.18.0"
+
+# Standardregeln von gitleaks (private Keys, JWT, bekannte Token-Formate)
+# plus die Morgo-eigenen Muster.
+[extend]
+useDefault = true
+
+[[rules]]
+id = "home-assistant-long-lived-token"
+description = "Home-Assistant-Long-Lived-Token oder JWT"
+regex = '''eyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}'''
+keywords = ["eyJ"]
+
+[[rules]]
+id = "otpauth-uri"
+description = "otpauth-URI, zum Beispiel aus einem WebUntis-QR"
+regex = '''otpauth://(?:totp|hotp)/\S+'''
+keywords = ["otpauth"]
+
+[[rules]]
+id = "webuntis-base32-secret"
+description = "Base32-Secret, wie es ein WebUntis-QR enthält"
+regex = '''(?i)(?:secret|otp|totp)[\s:=]{0,12}"?([A-Z2-7]{16,})"?'''
+keywords = ["secret", "otp", "totp"]
+
+[[rules]]
+id = "assigned-password"
+description = "Zugewiesenes Passwort oder Token"
+regex = '''(?i)(?:^|[^A-Za-z0-9_])(?:password|passwd|pwd|token|secret|api[_-]?key)\s*[=:]\s*['"][^'"]{8,}['"]'''
+keywords = ["password", "passwd", "pwd", "token", "secret", "api_key", "apikey"]
+
+[[rules]]
+id = "keystore-file"
+description = "Java-Keystore"
+path = '''(?i)(?:^|/)[^/]+\.(?:jks|keystore)$'''
+regex = '''(?s).+'''
+
+[[rules]]
+id = "dotenv-or-local-properties"
+description = "local.properties oder .env"
+path = '''(?i)(?:^|/)(?:local\.properties|\.env(?:\.[^/]+)?)$'''
+regex = '''(?s).+'''
+keywords = ["="]
+
+[allowlist]
+description = "Platzhalter in Tests. OWDL4fE4ixNiPBBm ist die öffentliche ÖBB-HAFAS-Client-ID, kein persönliches Geheimnis."
+regexTarget = "line"
+regexes = [
+  '''OWDL4fE4ixNiPBBm''',
+  '''testpass''',
+  '''invalidpass''',
+  '''secret-token''',
+  '''geheim''',
+  '''JBSWY3DPEHPK3PXP''',
+  '''webuntis_password''',
+  '''webuntis_secret''',
+  '''ha_token''',
+  '''morgo\.storePassword''',
+  '''morgo\.keyPassword''',
+  '''MORGO_KEYSTORE_PASSWORD''',
+  '''MORGO_KEY_PASSWORD''',
+  '''getProperty\("storePassword"\)''',
+  '''getProperty\("keyPassword"\)''',
+  '''storePassword\s*=\s*storePassword''',
+  '''keyPassword\s*=\s*keyPassword''',
+]
+paths = [
+  '''(?i)(^|/)\.env\.example$''',
+  '''(?i)(^|/)(build|\.gradle)/''',
+]

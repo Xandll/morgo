@@ -61,4 +61,6 @@ Thumbs.db
 keystore.properties
 *.p12
 *.pem
-.cursor/
+.cursor/*
+!.cursor/rules/
+!.cursor/rules/**
