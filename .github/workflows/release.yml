@@ -1,0 +1,83 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Plattform 35
+        run: sdkmanager "platforms;android-35" "build-tools;35.0.0"
+
+      - name: Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          cache-cleanup: on-success
+
+      - name: Keystore aus Secrets
+        env:
+          MORGO_KEYSTORE_B64: ${{ secrets.MORGO_KEYSTORE_B64 }}
+          MORGO_KEYSTORE_PASSWORD: ${{ secrets.MORGO_KEYSTORE_PASSWORD }}
+          MORGO_KEY_ALIAS: ${{ secrets.MORGO_KEY_ALIAS }}
+          MORGO_KEY_PASSWORD: ${{ secrets.MORGO_KEY_PASSWORD }}
+        run: |
+          test -n "$MORGO_KEYSTORE_B64"
+          test -n "$MORGO_KEYSTORE_PASSWORD"
+          test -n "$MORGO_KEY_ALIAS"
+          test -n "$MORGO_KEY_PASSWORD"
+          printf '%s' "$MORGO_KEYSTORE_B64" | base64 -d > "$RUNNER_TEMP/morgo-release.jks"
+          test -s "$RUNNER_TEMP/morgo-release.jks"
+
+      - name: Tests und signierte APK
+        env:
+          MORGO_KEYSTORE_FILE: ${{ runner.temp }}/morgo-release.jks
+          MORGO_KEYSTORE_PASSWORD: ${{ secrets.MORGO_KEYSTORE_PASSWORD }}
+          MORGO_KEY_ALIAS: ${{ secrets.MORGO_KEY_ALIAS }}
+          MORGO_KEY_PASSWORD: ${{ secrets.MORGO_KEY_PASSWORD }}
+        run: ./gradlew testDebugUnitTest assembleRelease --no-daemon
+
+      - name: APK, Prüfsumme, Changelog
+        run: |
+          SRC=app/build/outputs/apk/release/app-release.apk
+          cp "$SRC" "$RUNNER_TEMP/morgo-release.apk"
+          (cd "$RUNNER_TEMP" && sha256sum morgo-release.apk > morgo-release.apk.sha256)
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --print-certs "$RUNNER_TEMP/morgo-release.apk" | tee "$RUNNER_TEMP/certs.txt"
+          if grep -q "CN=Android Debug" "$RUNNER_TEMP/certs.txt"; then
+            echo "Release ist mit dem Debug-Key signiert."
+            exit 1
+          fi
+          PREV=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)
+          if [ -n "$PREV" ]; then
+            git log --pretty=format:'- %s' "$PREV"..HEAD > "$RUNNER_TEMP/notes.md"
+          else
+            git log --pretty=format:'- %s' > "$RUNNER_TEMP/notes.md"
+          fi
+
+      - name: GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            ${{ runner.temp }}/morgo-release.apk
+            ${{ runner.temp }}/morgo-release.apk.sha256
+          body_path: ${{ runner.temp }}/notes.md
+          fail_on_unmatched_files: true
