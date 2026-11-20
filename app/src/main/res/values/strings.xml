@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Morgo</string>
+    
+    <!-- Allgemein -->
+    <string name="ok">OK</string>
+    <string name="cancel">Abbrechen</string>
+    <string name="save">Speichern</string>
+    <string name="delete">Löschen</string>
+    <string name="error">Fehler</string>
+    <string name="loading">Lädt…</string>
+    <string name="retry">Erneut versuchen</string>
+    
+    <!-- Home-Screen -->
+    <string name="home_title">Morgo</string>
+    <string name="home_next_alarm">Nächster Wecker</string>
+    <string name="home_no_alarm">Kein Wecker geplant</string>
+    <string name="home_first_lesson">Erste Stunde</string>
+    <string name="home_no_lessons">Kein Unterricht</string>
+    <string name="home_train_connection">Zugverbindung</string>
+    <string name="home_no_connection">Keine Verbindung gefunden</string>
+    <string name="home_on_time">Pünktlich</string>
+    <string name="home_delayed">Verspätung: %d Min</string>
+    <string name="home_cancelled">Ausfall</string>
+    <string name="home_home_assistant">Home Assistant</string>
+    <string name="home_refresh">Aktualisieren</string>
+    
+    <!-- Settings -->
+    <string name="settings_title">Einstellungen</string>
+    <string name="settings_webuntis">WebUntis</string>
+    <string name="settings_webuntis_server">Server</string>
+    <string name="settings_webuntis_server_hint">z.B. webuntis.com</string>
+    <string name="settings_webuntis_school">Schulname</string>
+    <string name="settings_webuntis_school_hint">z.B. meineschule</string>
+    <string name="settings_webuntis_username">Benutzername</string>
+    <string name="settings_webuntis_password">Passwort</string>
+    <string name="settings_train">Zug</string>
+    <string name="settings_train_start">Startstation</string>
+    <string name="settings_train_start_hint">Suchen oder eingeben</string>
+    <string name="settings_train_destination">Zielstation</string>
+    <string name="settings_train_destination_hint">Suchen oder eingeben</string>
+    <string name="settings_walking_time">Fußweg zur Schule (Min)</string>
+    <string name="settings_preparation_time">Vorbereitungszeit morgens (Min)</string>
+    <string name="settings_home_assistant">Home Assistant</string>
+    <string name="settings_home_assistant_url">URL</string>
+    <string name="settings_home_assistant_url_hint">https://home.example</string>
+    <string name="settings_home_assistant_token">Access Token</string>
+    <string name="settings_home_assistant_token_hint">Langlebiges Token</string>
+    <string name="settings_alarm">Wecker</string>
+    <string name="settings_alarm_default_time">Standard-Weckzeit (ohne Unterricht)</string>
+    <string name="settings_alarm_enabled">Wecker aktiviert</string>
+    <string name="settings_test_connection">Verbindung testen</string>
+    <string name="settings_connection_success">Verbindung erfolgreich</string>
+    <string name="settings_connection_failed">Verbindung fehlgeschlagen: %s</string>
+    
+    <!-- Alarm -->
+    <string name="alarm_title">Wecker</string>
+    <string name="alarm_snooze">Schlummern</string>
+    <string name="alarm_dismiss">Ausschalten</string>
+    <string name="alarm_good_morning">Guten Morgen!</string>
+    <string name="alarm_time_to_wake_up">Zeit aufzustehen</string>
+    
+    <!-- Notifications -->
+    <string name="notification_channel_alarm">Wecker</string>
+    <string name="notification_channel_alarm_desc">Wecker-Benachrichtigungen</string>
+    <string name="notification_channel_train">Zugverspätungen</string>
+    <string name="notification_channel_train_desc">Benachrichtigungen zu Zugverspätungen und Ausfällen</string>
+    <string name="notification_train_delay_title">Zugverspätung</string>
+    <string name="notification_train_delay_text">Deine Zugverbindung hat %d Minuten Verspätung</string>
+    <string name="notification_train_cancelled_title">Zug ausgefallen</string>
+    <string name="notification_train_cancelled_text">Deine Zugverbindung ist ausgefallen</string>
+    
+    <!-- Permissions -->
+    <string name="permission_exact_alarm_title">Exakte Wecker erlauben</string>
+    <string name="permission_exact_alarm_message">Morgo benötigt die Berechtigung für exakte Wecker, um dich pünktlich zu wecken.</string>
+    <string name="permission_notification_title">Benachrichtigungen erlauben</string>
+    <string name="permission_notification_message">Morgo benötigt die Berechtigung für Benachrichtigungen, um dich über Zugverspätungen zu informieren.</string>
+</resources>
