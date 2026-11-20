@@ -37,7 +37,7 @@ class HafasClient(
         private const val CLIENT_NAME = "oebbIPH"
         private const val CLIENT_VERSION = "6030600"
         private const val API_VERSION = "1.41"
-        private const val AUTH_AID = "OWDL4fE4ixNiPBBm"
+        private const val AUTH_AID = "OWDL4fE4ixNiPBBm" // öffentliche Kennung
         private val json = Json {
             ignoreUnknownKeys = true
             isLenient = true

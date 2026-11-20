@@ -1,0 +1,6 @@
+version: 2
+
+secret:
+  ignored_matches:
+    - name: Oeffentliche OEBB HAFAS Client-ID
+      match: c94293d111e77796c390c5f228762e20897d00c79736f7c0cdb7dee912f47928
