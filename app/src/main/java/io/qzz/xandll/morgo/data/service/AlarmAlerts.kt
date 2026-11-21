@@ -53,6 +53,7 @@ object AlarmAlerts {
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle(spec.title)
             .setContentText(spec.body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(spec.body))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
             .setPriority(NotificationCompat.PRIORITY_MAX)
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)

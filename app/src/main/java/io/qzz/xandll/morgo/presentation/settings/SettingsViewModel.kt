@@ -24,6 +24,7 @@ import io.qzz.xandll.morgo.data.datasource.HomeAssistantClient
 import io.qzz.xandll.morgo.data.datasource.RadioBrowserClient
 import io.qzz.xandll.morgo.data.datasource.RadioStation
 import io.qzz.xandll.morgo.data.service.WakeSoundService
+import io.qzz.xandll.morgo.data.service.WakeSoundStatus
 import io.qzz.xandll.morgo.data.update.UpdateCheckResult
 import io.qzz.xandll.morgo.data.update.UpdateCoordinator
 import io.qzz.xandll.morgo.data.update.UpdateScheduler
@@ -57,7 +58,8 @@ class SettingsViewModel @Inject constructor(
     private val preWakeLightScheduler: PreWakeLightScheduler,
     private val leaveLightScheduler: LeaveLightScheduler,
     private val radioBrowser: RadioBrowserClient,
-    private val updateCoordinator: UpdateCoordinator
+    private val updateCoordinator: UpdateCoordinator,
+    private val wakeSoundStatus: WakeSoundStatus
 ) : ViewModel() {
 
     private val _settings = MutableStateFlow(settingsRepository.loadSettings())
@@ -217,8 +219,15 @@ class SettingsViewModel @Inject constructor(
     private val _subjects = MutableStateFlow<List<String>>(emptyList())
     val subjects: StateFlow<List<String>> = _subjects.asStateFlow()
 
+    val wakeSoundFailure = wakeSoundStatus.failure
+
     fun testWakeSound() {
+        wakeSoundStatus.clear()
         WakeSoundService.startTest(context)
+    }
+
+    fun clearWakeSoundFailure() {
+        wakeSoundStatus.clear()
     }
 
     fun searchRadio(query: String) {

@@ -236,6 +236,17 @@ fun SettingsScreen(
         }
     )
 
+    viewModel.wakeSoundFailure.collectAsState().value?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearWakeSoundFailure() },
+            title = { Text("Musik-Wecker") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearWakeSoundFailure() }) { Text("OK") }
+            }
+        )
+    }
+
     viewModel.radioError.collectAsState().value?.let { message ->
         AlertDialog(
             onDismissRequest = { viewModel.clearRadioError() },

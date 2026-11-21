@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.2
+
+- Der Radio-Stream im Musik-Wecker hält das WLAN wach und wartet die eingestellte Fallback-Zeit, auch wenn das Netz nach dem Wecken erst hochfährt. Eine stille Lautstärkerampe gilt nicht als Ausfall. Scheitert der Stream, stehen Fehlercode und Grund in der Benachrichtigung und beim Testen.
+
 ## 1.6.1
 
 - Systemfarbe und die übrigen Darstellungseinstellungen gelten sofort, ohne die App neu zu starten.

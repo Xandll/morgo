@@ -9,6 +9,7 @@ import android.media.MediaPlayer
 import android.media.RingtoneManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import android.net.wifi.WifiManager
 import android.os.IBinder
 import android.os.PowerManager
 import androidx.core.app.ServiceCompat
@@ -17,7 +18,11 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import io.qzz.xandll.morgo.BuildConfig
+import io.qzz.xandll.morgo.data.datasource.RadioBrowser
 import dagger.hilt.android.AndroidEntryPoint
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.data.repository.MorgoRepository
@@ -26,6 +31,8 @@ import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.domain.model.HaServiceKind
 import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
+import io.qzz.xandll.morgo.domain.model.StreamPhase
+import io.qzz.xandll.morgo.domain.model.StreamSample
 import io.qzz.xandll.morgo.domain.model.WakeSound
 import io.qzz.xandll.morgo.domain.model.WakeSoundMath
 import kotlinx.coroutines.CoroutineScope
@@ -45,14 +52,18 @@ class WakeSoundService : Service() {
     @Inject lateinit var secondary: SecondaryAlarmScheduler
     @Inject lateinit var alarms: AlarmSchedulerService
     @Inject lateinit var repository: MorgoRepository
+    @Inject lateinit var soundStatus: WakeSoundStatus
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var wakeLock: PowerManager.WakeLock? = null
+    private var wifiLock: WifiManager.WifiLock? = null
     private var job: Job? = null
     private var generation = 0
     private var player: ExoPlayer? = null
     private var ringtone: MediaPlayer? = null
-    private var streamFailed = false
+    private var streamErrorCode: String? = null
+    private var streamErrorDetail: String? = null
+    private var testing = false
     @Volatile private var externalFailed = false
 
     override fun onBind(intent: Intent?): IBinder? = null
@@ -93,14 +104,25 @@ class WakeSoundService : Service() {
         }
         val test = action == ACTION_TEST
         val label = intent?.getStringExtra(SecondaryAlarmScheduler.EXTRA_LABEL).orEmpty()
+        testing = test
+        if (test) soundStatus.clear()
         acquireWakeLock()
         if (action == null) runWakeActions(kind)
-        ServiceCompat.startForeground(
-            this,
-            AlarmAlerts.NOTIFICATION_ID,
-            notification(test, kind, label),
-            android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
-        )
+        try {
+            ServiceCompat.startForeground(
+                this,
+                AlarmAlerts.NOTIFICATION_ID,
+                notification(test, kind, label),
+                android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
+            )
+        } catch (e: Exception) {
+            val text = WakeSoundMath.streamFailure(e.javaClass.simpleName, e.message)
+            if (test) soundStatus.reportFailure(text)
+            getSystemService(android.app.NotificationManager::class.java)
+                .notify(AlarmAlerts.NOTIFICATION_ID, notification(test, kind, label, text))
+            stopSelf()
+            return START_NOT_STICKY
+        }
         job?.cancel()
         val gen = ++generation
         job = scope.launch {
@@ -115,6 +137,7 @@ class WakeSoundService : Service() {
         scope.cancel()
         stopEverything()
         releaseWakeLock()
+        releaseWifiLock()
         super.onDestroy()
     }
 
@@ -143,6 +166,21 @@ class WakeSoundService : Service() {
         wakeLock = null
     }
 
+    private fun acquireWifiLock() {
+        if (wifiLock?.isHeld == true) return
+        val wifi = applicationContext.getSystemService(WifiManager::class.java) ?: return
+        @Suppress("DEPRECATION")
+        wifiLock = wifi.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "morgo:alarm-wifi").apply {
+            setReferenceCounted(false)
+            runCatching { acquire() }
+        }
+    }
+
+    private fun releaseWifiLock() {
+        wifiLock?.runCatching { if (isHeld) release() }
+        wifiLock = null
+    }
+
     private suspend fun play(kind: String, test: Boolean) {
         val alarm = settingsRepository.loadSettings().alarm
         val useMusic = (kind == SecondaryAlarmScheduler.KIND_MAIN || test) && alarm.wakeSound == WakeSound.MUSIC
@@ -151,14 +189,18 @@ class WakeSoundService : Service() {
             return
         }
         val music = alarm.music
-        streamFailed = false
+        streamErrorCode = null
+        streamErrorDetail = null
+        var lastRetrySecond = -3
         if (music.kind == MusicKind.STREAM) {
-            if (!startStream(music)) {
-                fallback()
+            acquireWifiLock()
+            if (music.streamUrl.isBlank()) {
+                fallback(WakeSoundMath.streamFailure("Stream fehlt", null))
                 return
             }
+            startStream(music)
         } else if (externalFailed) {
-            fallback()
+            fallback(WakeSoundMath.streamFailure("App", "Musik-App hat sich nicht geöffnet"))
             return
         }
         val started = SystemClock.elapsedRealtime()
@@ -168,37 +210,82 @@ class WakeSoundService : Service() {
         var heardQuiet = !musicActive()
         while (true) {
             val elapsedMs = SystemClock.elapsedRealtime() - started
-            player?.volume = WakeSoundMath.volumeAt(elapsedMs, rampMs, target)
+            val elapsedSec = (elapsedMs / 1000L).toInt()
+            player?.volume = WakeSoundMath.audibleVolume(WakeSoundMath.volumeAt(elapsedMs, rampMs, target))
             if (!musicActive()) heardQuiet = true
             val externalPlaying = music.kind != MusicKind.STREAM && heardQuiet && musicActive()
-            val playing = player?.isPlaying == true || externalPlaying
-            val elapsedSec = (elapsedMs / 1000L).toInt()
-            if (externalFailed || streamFailed || WakeSoundMath.fallbackNow(music.needsNetwork(), online(), elapsedSec, playing, music.fallbackSeconds)) {
-                fallback()
+            val phase = phaseOf(player)
+            val playing = externalPlaying || WakeSoundMath.countsAsPlaying(phase, player?.playWhenReady == true)
+            if (music.kind == MusicKind.STREAM &&
+                WakeSoundMath.shouldRetry(elapsedSec, music.fallbackSeconds, streamErrorCode != null, lastRetrySecond)
+            ) {
+                lastRetrySecond = elapsedSec
+                startStream(music)
+            }
+            val reason = when {
+                externalFailed -> WakeSoundMath.streamFailure("App", "Musik-App hat sich nicht geöffnet")
+                music.kind == MusicKind.STREAM -> WakeSoundMath.fallbackReason(
+                    StreamSample(
+                        elapsedSeconds = elapsedSec,
+                        limitSeconds = music.fallbackSeconds,
+                        online = online(),
+                        phase = phase,
+                        playWhenReady = player?.playWhenReady == true,
+                        errorCode = streamErrorCode,
+                        errorDetail = streamErrorDetail
+                    )
+                )
+                WakeSoundMath.fallbackNow(music.needsNetwork(), online(), elapsedSec, playing, music.fallbackSeconds) ->
+                    "Klingelton, Musik hat nicht gespielt"
+                else -> null
+            }
+            if (reason != null) {
+                fallback(reason)
                 return
             }
             delay(250)
         }
     }
 
+    private fun phaseOf(exo: ExoPlayer?): StreamPhase {
+        return when (exo?.playbackState) {
+            Player.STATE_BUFFERING -> StreamPhase.BUFFERING
+            Player.STATE_READY -> StreamPhase.READY
+            Player.STATE_ENDED -> StreamPhase.ENDED
+            else -> StreamPhase.IDLE
+        }
+    }
+
     private fun startStream(music: MusicAlarmSettings): Boolean {
         val url = music.streamUrl.trim()
-        if (url.isEmpty()) return false
-        streamFailed = false
+        if (url.isEmpty()) {
+            streamErrorCode = "Stream fehlt"
+            streamErrorDetail = null
+            return false
+        }
+        streamErrorCode = null
+        streamErrorDetail = null
         return try {
             releasePlayer()
-            val exo = ExoPlayer.Builder(this).build()
+            val http = DefaultHttpDataSource.Factory()
+                .setUserAgent(RadioBrowser.userAgent(BuildConfig.VERSION_NAME))
+                .setAllowCrossProtocolRedirects(true)
+            val exo = ExoPlayer.Builder(this)
+                .setMediaSourceFactory(DefaultMediaSourceFactory(http))
+                .build()
             exo.setAudioAttributes(
                 PlayerAudio.Builder()
                     .setUsage(C.USAGE_ALARM)
                     .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
                     .build(),
-                true
+                false
             )
-            exo.volume = 0f
+            exo.setWakeMode(C.WAKE_MODE_NETWORK)
+            exo.volume = WakeSoundMath.audibleVolume(0f)
             exo.addListener(object : Player.Listener {
                 override fun onPlayerError(error: PlaybackException) {
-                    streamFailed = true
+                    streamErrorCode = error.errorCodeName
+                    streamErrorDetail = error.message ?: error.cause?.javaClass?.simpleName
                 }
             })
             exo.setMediaItem(MediaItem.fromUri(url))
@@ -207,13 +294,17 @@ class WakeSoundService : Service() {
             player = exo
             true
         } catch (e: Exception) {
+            streamErrorCode = e.javaClass.simpleName
+            streamErrorDetail = e.message
             false
         }
     }
 
-    private fun fallback() {
+    private fun fallback(reason: String) {
         releasePlayer()
-        notificationManagerNotify("Klingelton, Musik hat nicht gespielt")
+        val text = if (reason.contains("Klingelton")) reason else "$reason, Klingelton"
+        notificationManagerNotify(text)
+        if (testing) soundStatus.reportFailure(text)
         startRingtone()
     }
 
@@ -255,6 +346,7 @@ class WakeSoundService : Service() {
         job?.cancel()
         releasePlayer()
         releaseRingtone()
+        releaseWifiLock()
     }
 
     private fun releasePlayer() {
@@ -274,7 +366,7 @@ class WakeSoundService : Service() {
         val manager = getSystemService(android.app.NotificationManager::class.java)
         manager.notify(
             AlarmAlerts.NOTIFICATION_ID,
-            notification(test = false, kind = SecondaryAlarmScheduler.KIND_MAIN, label = "", bodyOverride = text)
+            notification(test = testing, kind = SecondaryAlarmScheduler.KIND_MAIN, label = "", bodyOverride = text)
         )
     }
 

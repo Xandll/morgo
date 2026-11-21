@@ -117,6 +117,15 @@
 -keep class io.qzz.xandll.morgo.data.model.** { *; }
 -keep class io.qzz.xandll.morgo.domain.model.** { *; }
 
+# Media3. Der Stream-Player lädt Extractor und Decoder direkt.
+# Ohne diese Regeln fehlt im Release der MP3-Pfad.
+-keep class androidx.media3.exoplayer.** { *; }
+-keep class androidx.media3.extractor.** { *; }
+-keep class androidx.media3.datasource.** { *; }
+-keep class androidx.media3.decoder.** { *; }
+-keep class androidx.media3.common.** { *; }
+-dontwarn androidx.media3.**
+
 # ZXing Barcode Scanning
 -keep class com.google.zxing.** { *; }
 -keep class com.journeyapps.barcodescanner.** { *; }

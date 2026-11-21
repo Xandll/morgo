@@ -121,11 +121,40 @@ object SpotifyLink {
     }
 }
 
+enum class StreamPhase {
+    IDLE,
+    BUFFERING,
+    READY,
+    ENDED
+}
+
+/** Eine Beobachtung des Stream-Players. Die Lautstärke darf 0 sein, ohne als Ausfall zu gelten. */
+data class StreamSample(
+    val elapsedSeconds: Int,
+    val limitSeconds: Int,
+    val online: Boolean,
+    val phase: StreamPhase,
+    val playWhenReady: Boolean,
+    val errorCode: String? = null,
+    val errorDetail: String? = null
+)
+
 object WakeSoundMath {
     fun volumeAt(elapsedMs: Long, rampMs: Long, target: Float): Float {
         if (rampMs <= 0L) return target.coerceIn(0f, 1f)
         val fraction = (elapsedMs.toFloat() / rampMs.toFloat()).coerceIn(0f, 1f)
         return (target.coerceIn(0f, 1f) * fraction)
+    }
+
+    /** ExoPlayer bleibt bei Lautstärke 0 auf manchen Geräten stumm. Ein leiser Boden startet die Spur. */
+    fun audibleVolume(ramped: Float): Float {
+        val value = ramped.coerceIn(0f, 1f)
+        return if (value < 0.02f) 0.02f else value
+    }
+
+    /** Bereit und abspielbereit zählt, auch wenn die Rampe noch bei null steht. */
+    fun countsAsPlaying(phase: StreamPhase, playWhenReady: Boolean): Boolean {
+        return playWhenReady && phase == StreamPhase.READY
     }
 
     fun fallbackNow(
@@ -136,8 +165,39 @@ object WakeSoundMath {
         limitSeconds: Int
     ): Boolean {
         if (playing) return false
-        if (needsNetwork && !online && elapsedSeconds >= 3) return true
         return elapsedSeconds >= limitSeconds.coerceAtLeast(5)
+    }
+
+    /**
+     * null heißt: weiter warten. Ein Fehler oder fehlendes Netz beendet den Versuch erst
+     * nach dem eingestellten Fallback, damit das WLAN nach dem Wecken noch hochfahren kann.
+     */
+    fun fallbackReason(sample: StreamSample): String? {
+        if (countsAsPlaying(sample.phase, sample.playWhenReady)) return null
+        val limit = sample.limitSeconds.coerceAtLeast(5)
+        if (sample.elapsedSeconds < limit) return null
+        val code = sample.errorCode?.trim().orEmpty()
+        if (code.isNotEmpty()) return streamFailure(code, sample.errorDetail)
+        if (!sample.online) return "Kein Netz nach ${limit}s, Klingelton"
+        val state = when (sample.phase) {
+            StreamPhase.IDLE -> "nicht gestartet"
+            StreamPhase.BUFFERING -> "noch am Puffern"
+            StreamPhase.READY -> "bereit, aber ohne Wiedergabe"
+            StreamPhase.ENDED -> "Stream zu Ende"
+        }
+        return "Stream hat nach ${limit}s nicht gespielt ($state), Klingelton"
+    }
+
+    fun streamFailure(code: String, detail: String?): String {
+        val extra = detail?.trim().orEmpty()
+        return if (extra.isEmpty()) "Musik fehlgeschlagen: $code" else "Musik fehlgeschlagen: $code ($extra)"
+    }
+
+    fun shouldRetry(elapsedSeconds: Int, limitSeconds: Int, failed: Boolean, lastRetrySecond: Int): Boolean {
+        if (!failed) return false
+        val limit = limitSeconds.coerceAtLeast(5)
+        if (elapsedSeconds >= limit) return false
+        return elapsedSeconds - lastRetrySecond >= 3
     }
 }
 
