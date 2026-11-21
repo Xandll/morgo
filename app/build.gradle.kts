@@ -19,8 +19,8 @@ android {
         applicationId = "io.qzz.xandll.morgo"
         minSdk = 29
         targetSdk = 35
-        versionCode = 15
-        versionName = "1.6.3"
+        versionCode = 16
+        versionName = "1.6.4"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -170,6 +170,9 @@ dependencies {
     androidTestImplementation("androidx.test.espresso:espresso-core:3.6.1")
     androidTestImplementation(composeBom)
     androidTestImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.compose.ui:ui-test-junit4")
+    testImplementation("androidx.compose.ui:ui-test-manifest")
+    testImplementation("org.robolectric:robolectric:4.13")
     
     // Debug
     debugImplementation("androidx.compose.ui:ui-tooling")

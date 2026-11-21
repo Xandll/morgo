@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.4
+
+- Die Einstellungen öffnen wieder. Der Stundenplan für die Extra-Wecker wurde gelesen, bevor sein Zustand angelegt war, und das hat die App sofort beendet. Fehlende neue Werte (Zufallswiedergabe, Sonara-Playlist, Licht beim Losgehen) bleiben bei den bisherigen Vorgaben. Ohne gespeicherten Stundenplan steht „Keine Stunden gefunden“.
+- Ist Sonara nicht installiert oder antwortet nicht, bleibt die Playlist bei den Lieblingssongs. Die Verbindung kann die Einstellungen nicht mehr beenden.
+- Nach einem Absturz zeigt der nächste Start den letzten Bericht. Er lässt sich kopieren oder teilen.
+
 ## 1.6.3
 
 - Sonara 1.0.119 startet die gewählte Playlist gemischt. Die Liste kommt aus Sonara, sonst sind es die Lieblingssongs. Meldet Sonara einen Fehler, steht der Text in der Benachrichtigung und der Klingelton übernimmt.

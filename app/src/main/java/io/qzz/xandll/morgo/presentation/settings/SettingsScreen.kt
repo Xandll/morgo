@@ -352,12 +352,16 @@ fun SettingsBody(
     onAllowFullScreen: () -> Unit = {},
     onTestLeaveLight: () -> Unit = {}
 ) {
-    val pagerState = rememberPagerState(initialPage = tab.coerceIn(0, tabs.lastIndex)) { tabs.size }
+    val safeTab = tab.coerceIn(0, tabs.lastIndex)
+    val pagerState = rememberPagerState(initialPage = safeTab) { tabs.size }
     LaunchedEffect(pagerState.currentPage) {
-        if (pagerState.currentPage != tab) onTab(pagerState.currentPage)
+        val page = pagerState.currentPage.coerceIn(0, tabs.lastIndex)
+        if (page != tab) onTab(page)
     }
-    LaunchedEffect(tab) {
-        if (pagerState.currentPage != tab) pagerState.scrollToPage(tab)
+    LaunchedEffect(safeTab) {
+        if (pagerState.currentPage != safeTab) {
+            runCatching { pagerState.scrollToPage(safeTab) }
+        }
     }
     Scaffold(
         topBar = {

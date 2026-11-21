@@ -25,15 +25,27 @@ object SonaraLibrary {
     private val main = Handler(Looper.getMainLooper())
     private var browser: MediaBrowser? = null
     private var ticket = 0
+    private var pendingTimeout: Runnable? = null
 
     fun load(context: Context, onResult: (List<SonaraPlaylist>) -> Unit) {
         val app = context.applicationContext
+        if (!installed(app)) {
+            onResult(emptyList())
+            return
+        }
         val mine = ++ticket
         main.post {
             runCatching { connect(app, mine, onResult) }.onFailure {
                 fail(mine, onResult)
             }
         }
+    }
+
+    @Suppress("DEPRECATION")
+    private fun installed(context: Context): Boolean {
+        return runCatching {
+            context.packageManager.getPackageInfo(SonaraShuffle.PACKAGE, 0)
+        }.isSuccess
     }
 
     private fun connect(context: Context, mine: Int, onResult: (List<SonaraPlaylist>) -> Unit) {
@@ -43,31 +55,45 @@ object SonaraLibrary {
         val future = MediaBrowser.Builder(context, token).buildAsync()
         val executor = ContextCompat.getMainExecutor(context)
         val timeout = Runnable { fail(mine, onResult) }
-        main.postDelayed(timeout, TIMEOUT_MS)
+        arm(timeout)
         future.addListener({
             if (mine != ticket) return@addListener
-            val connected = runCatching { future.get() }.getOrElse {
-                main.removeCallbacks(timeout)
+            runCatching {
+                val connected = future.get()
+                browser = connected
+                val params: MediaLibraryService.LibraryParams? = null
+                val children = connected.getChildren(SonaraShuffle.PLAYLISTS_PARENT, 0, PAGE_SIZE, params)
+                children.addListener({
+                    disarm()
+                    if (mine != ticket) return@addListener
+                    runCatching {
+                        val result = children.get()
+                        if (result.resultCode != LibraryResult.RESULT_SUCCESS) {
+                            fail(mine, onResult)
+                            return@runCatching
+                        }
+                        val items = result.value.orEmpty().mapNotNull { item ->
+                            SonaraShuffle.child(item.mediaId, item.mediaMetadata.title?.toString().orEmpty())
+                        }
+                        deliver(mine, items, onResult)
+                    }.onFailure { fail(mine, onResult) }
+                }, executor)
+            }.onFailure {
+                disarm()
                 fail(mine, onResult)
-                return@addListener
             }
-            browser = connected
-            val params: MediaLibraryService.LibraryParams? = null
-            val children = connected.getChildren(SonaraShuffle.PLAYLISTS_PARENT, 0, PAGE_SIZE, params)
-            children.addListener({
-                main.removeCallbacks(timeout)
-                if (mine != ticket) return@addListener
-                val result = runCatching { children.get() }.getOrNull()
-                if (result == null || result.resultCode != LibraryResult.RESULT_SUCCESS) {
-                    fail(mine, onResult)
-                    return@addListener
-                }
-                val items = result.value.orEmpty().mapNotNull { item ->
-                    SonaraShuffle.child(item.mediaId, item.mediaMetadata.title?.toString().orEmpty())
-                }
-                deliver(mine, items, onResult)
-            }, executor)
         }, executor)
+    }
+
+    private fun arm(timeout: Runnable) {
+        pendingTimeout?.let { main.removeCallbacks(it) }
+        pendingTimeout = timeout
+        main.postDelayed(timeout, TIMEOUT_MS)
+    }
+
+    private fun disarm() {
+        pendingTimeout?.let { main.removeCallbacks(it) }
+        pendingTimeout = null
     }
 
     private fun fail(mine: Int, onResult: (List<SonaraPlaylist>) -> Unit) {
@@ -78,9 +104,9 @@ object SonaraLibrary {
 
     private fun deliver(mine: Int, items: List<SonaraPlaylist>, onResult: (List<SonaraPlaylist>) -> Unit) {
         if (mine != ticket) return
-        main.removeCallbacksAndMessages(null)
+        disarm()
         browser?.runCatching { release() }
         browser = null
-        onResult(items)
+        runCatching { onResult(items) }
     }
 }

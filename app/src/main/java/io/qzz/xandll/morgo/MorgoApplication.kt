@@ -8,6 +8,7 @@ import android.os.Build
 import androidx.hilt.work.HiltWorkerFactory
 import androidx.work.Configuration
 import dagger.hilt.android.HiltAndroidApp
+import io.qzz.xandll.morgo.data.CrashLog
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.data.service.EveningCheckScheduler
 import io.qzz.xandll.morgo.data.update.UpdateScheduler
@@ -27,6 +28,7 @@ class MorgoApplication : Application(), Configuration.Provider {
 
     override fun onCreate() {
         super.onCreate()
+        CrashLog.install(this)
         createNotificationChannels()
         val settings = settingsRepository.loadSettings()
         eveningCheckScheduler.reschedule(settings)

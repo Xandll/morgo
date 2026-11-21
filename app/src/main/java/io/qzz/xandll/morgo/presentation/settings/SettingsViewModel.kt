@@ -98,7 +98,11 @@ class SettingsViewModel @Inject constructor(
     private val _schoolSearchQuery = MutableStateFlow("")
     private val _schoolSearchResults = MutableStateFlow<List<io.qzz.xandll.morgo.data.model.WebUntisSchool>>(emptyList())
     val schoolSearchResults: StateFlow<List<io.qzz.xandll.morgo.data.model.WebUntisSchool>> = _schoolSearchResults.asStateFlow()
-    
+
+    // Vor init. Kotlin führt Initializer in Quellreihenfolge aus, und init liest diesen Flow.
+    private val _cachedLessons = MutableStateFlow<List<io.qzz.xandll.morgo.domain.model.Lesson>>(emptyList())
+    val cachedLessons: StateFlow<List<io.qzz.xandll.morgo.domain.model.Lesson>> = _cachedLessons.asStateFlow()
+
     init {
         refreshCachedTimetable()
         // Debounced station search, ab 2 Zeichen
@@ -225,9 +229,6 @@ class SettingsViewModel @Inject constructor(
     private val _subjects = MutableStateFlow<List<String>>(emptyList())
     val subjects: StateFlow<List<String>> = _subjects.asStateFlow()
 
-    private val _cachedLessons = MutableStateFlow<List<io.qzz.xandll.morgo.domain.model.Lesson>>(emptyList())
-    val cachedLessons: StateFlow<List<io.qzz.xandll.morgo.domain.model.Lesson>> = _cachedLessons.asStateFlow()
-
     val wakeSoundFailure = wakeSoundStatus.failure
 
     fun testWakeSound() {
@@ -262,7 +263,9 @@ class SettingsViewModel @Inject constructor(
     }
 
     fun refreshCachedTimetable(today: java.time.LocalDate = java.time.LocalDate.now()) {
-        _cachedLessons.value = repository.readLessonCacheWindow(today, io.qzz.xandll.morgo.domain.model.ExtraAlarmPlan.HORIZON_DAYS)
+        _cachedLessons.value = runCatching {
+            repository.readLessonCacheWindow(today, io.qzz.xandll.morgo.domain.model.ExtraAlarmPlan.HORIZON_DAYS)
+        }.getOrDefault(emptyList())
     }
 
     fun loadSubjects() {

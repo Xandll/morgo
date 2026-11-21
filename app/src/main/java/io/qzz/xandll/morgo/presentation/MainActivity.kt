@@ -49,6 +49,7 @@ class MainActivity : ComponentActivity() {
             val offer by settingsRepository.updateOffer.collectAsState()
             val installStatus by updateInstaller.status.collectAsState()
             MorgoTheme(dynamicColor = settings.useDynamicColor) {
+                CrashReportDialog(this)
                 val visibleOffer = offer?.takeIf { settings.update.enabled && !it.dismissed }
                 if (visibleOffer != null) {
                     UpdateDialog(
