@@ -13,6 +13,7 @@ import io.qzz.xandll.morgo.data.receiver.PreWakeLightReceiver
 import io.qzz.xandll.morgo.data.service.PreWakeLightScheduler
 import io.qzz.xandll.morgo.data.worker.AlarmRefresh
 import io.qzz.xandll.morgo.domain.model.AppSettings
+import io.qzz.xandll.morgo.domain.model.HomeAssistantTargets
 import io.qzz.xandll.morgo.domain.model.LessonGrid
 import io.qzz.xandll.morgo.domain.model.LessonSlot
 import io.qzz.xandll.morgo.domain.model.Station
@@ -195,6 +196,9 @@ class SettingsViewModel @Inject constructor(
     private val _radioStations = MutableStateFlow<List<RadioStation>>(emptyList())
     val radioStations: StateFlow<List<RadioStation>> = _radioStations.asStateFlow()
 
+    private val _radioError = MutableStateFlow<String?>(null)
+    val radioError: StateFlow<String?> = _radioError.asStateFlow()
+
     private val _subjects = MutableStateFlow<List<String>>(emptyList())
     val subjects: StateFlow<List<String>> = _subjects.asStateFlow()
 
@@ -205,8 +209,19 @@ class SettingsViewModel @Inject constructor(
     fun searchRadio(query: String) {
         viewModelScope.launch {
             val host = _settings.value.alarm.music.radioBrowserHost
-            _radioStations.value = radioBrowser.search(query, host).getOrElse { emptyList() }
+            _radioError.value = null
+            radioBrowser.search(query, host).fold(
+                onSuccess = { _radioStations.value = it },
+                onFailure = { error ->
+                    _radioStations.value = emptyList()
+                    _radioError.value = ConnectionErrors.describe(error, ConnectionErrors.Service.RADIO).message
+                }
+            )
         }
+    }
+
+    fun clearRadioError() {
+        _radioError.value = null
     }
 
     fun loadSubjects() {
@@ -410,16 +425,16 @@ class SettingsViewModel @Inject constructor(
             result.fold(
                 onSuccess = { entities ->
                     val usable = entities.filter {
-                        it.type == io.qzz.xandll.morgo.domain.model.EntityType.LIGHT ||
-                            it.type == io.qzz.xandll.morgo.domain.model.EntityType.SCENE ||
-                            it.type == io.qzz.xandll.morgo.domain.model.EntityType.SCRIPT
+                        HomeAssistantTargets.isSelectable(it.entityId)
                     }
                     _homeAssistantEntities.value = usable
-                    val lights = usable.count { it.type == io.qzz.xandll.morgo.domain.model.EntityType.LIGHT }
-                    if (lights == 0) {
-                        val message = "Home Assistant hat keine Lampen zurückgegeben."
+                    if (usable.isEmpty()) {
+                        val message = "Home Assistant hat keine passenden Einträge zurückgegeben."
                         _lightsMessage.value = message
-                        _testConnectionResult.value = ConnectionTestResult.Error(message, "GET /api/states ohne light.*")
+                        _testConnectionResult.value = ConnectionTestResult.Error(
+                            message,
+                            "GET /api/states ohne light.*, switch.*, input_boolean.*, script.* oder scene.*"
+                        )
                     } else {
                         _lightsMessage.value = null
                     }

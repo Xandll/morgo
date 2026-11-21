@@ -11,7 +11,8 @@
 -dontwarn kotlin.reflect.jvm.internal.**
 -keep class kotlin.reflect.jvm.internal.** { *; }
 
-# JsonElement nicht umbenennen. Sonst bricht attributes nur im Release.
+# JsonElement nicht umbenennen. Sonst brechen Home-Assistant-Zustände
+# und die Radio-Browser-Antwort nur im Release.
 -keep class kotlinx.serialization.json.** { *; }
 -keepclassmembers class kotlinx.serialization.json.** { *; }
 

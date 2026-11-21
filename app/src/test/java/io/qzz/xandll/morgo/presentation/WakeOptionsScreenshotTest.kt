@@ -79,14 +79,16 @@ class WakeOptionsScreenshotTest {
                     streamUrl = "https://orf-live.ors-shoutcast.at/oe3-q2a",
                     rampSeconds = 30,
                     fallbackSeconds = 20,
-                    volumePercent = 70
+                    volumePercent = 70,
+                    radioBrowserHost = "https://de1.api.radio-browser.info"
                 )
             ),
             onChange = {},
             radioResults = listOf(
-                RadioStation("Hitradio Ö3", "https://orf-live.ors-shoutcast.at/oe3-q2a", "Austria"),
-                RadioStation("FM4", "https://orf-live.ors-shoutcast.at/fm4-q2a", "Austria")
+                RadioStation("ORF Hitradio Ö3", "https://orf-live.ors-shoutcast.at/oe3-q2a", "AT"),
+                RadioStation("FM4", "https://orf-live.ors-shoutcast.at/fm4-q2a", "AT")
             ),
+            initialRadioQuery = "Ö3",
             onSearchRadio = {},
             onPickApp = {},
             onTest = {}

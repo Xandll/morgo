@@ -4,6 +4,7 @@ import android.content.Context
 import android.content.SharedPreferences
 import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
+import io.qzz.xandll.morgo.data.datasource.RadioBrowser
 import io.qzz.xandll.morgo.domain.model.*
 import io.qzz.xandll.morgo.domain.update.UpdateOffer
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -286,9 +287,17 @@ class SettingsRepository private constructor(
             rampSeconds = regularPrefs.getInt(KEY_MUSIC_RAMP, 30),
             fallbackSeconds = regularPrefs.getInt(KEY_MUSIC_FALLBACK, 20),
             volumePercent = regularPrefs.getInt(KEY_MUSIC_VOLUME, 70),
-            radioBrowserHost = regularPrefs.getString(KEY_RADIO_HOST, "https://de1.radio-browser.info")
-                ?: "https://de1.radio-browser.info"
+            radioBrowserHost = migratedRadioHost()
         )
+    }
+
+    private fun migratedRadioHost(): String {
+        val stored = regularPrefs.getString(KEY_RADIO_HOST, null)
+        val host = RadioBrowser.migrateHost(stored)
+        if (!stored.isNullOrBlank() && stored != host) {
+            regularPrefs.edit().putString(KEY_RADIO_HOST, host).apply()
+        }
+        return host
     }
 
     private fun loadPreWake(): PreWakeLightSettings {

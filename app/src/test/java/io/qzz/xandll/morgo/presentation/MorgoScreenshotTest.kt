@@ -186,7 +186,8 @@ class MorgoScreenshotTest {
                 testingTrain = false,
                 entities = listOf(
                     HomeAssistantEntity("light.schlafzimmer", "Schlafzimmer", "off", EntityType.LIGHT),
-                    HomeAssistantEntity("light.schreibtisch", "Schreibtisch", "on", EntityType.LIGHT),
+                    HomeAssistantEntity("switch.nachtlicht", "Nachtlicht", "off", EntityType.SWITCH),
+                    HomeAssistantEntity("script.licht_1", "Licht 1", "off", EntityType.SCRIPT),
                     HomeAssistantEntity("scene.morgen", "Morgenlicht", "off", EntityType.SCENE)
                 ),
                 onLoadEntities = {},
@@ -204,17 +205,20 @@ class MorgoScreenshotTest {
         PreWakeLightCard(
             light = PreWakeLightSettings(
                 enabled = true,
-                entityIds = listOf("light.schlafzimmer"),
+                entityIds = listOf("script.licht_1"),
                 leadMinutes = 10,
                 toggleCount = 4,
                 intervalAmount = 20,
                 intervalUnit = LightIntervalUnit.SECONDS,
-                brightness = 204
+                brightness = null
             ),
             entities = listOf(
+                HomeAssistantEntity("script.licht_1", "Licht 1", "off", EntityType.SCRIPT),
                 HomeAssistantEntity("light.schlafzimmer", "Schlafzimmer", "off", EntityType.LIGHT),
-                HomeAssistantEntity("light.schreibtisch", "Schreibtisch", "on", EntityType.LIGHT)
+                HomeAssistantEntity("input_boolean.leselampe", "Leselampe", "off", EntityType.INPUT_BOOLEAN),
+                HomeAssistantEntity("scene.morgen", "Morgenlicht", "off", EntityType.SCENE)
             ),
+            initialQuery = "",
             onChange = {},
             onLoad = {},
             onTest = {}

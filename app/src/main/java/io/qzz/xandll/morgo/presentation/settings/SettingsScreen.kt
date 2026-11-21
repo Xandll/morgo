@@ -81,6 +81,7 @@ import io.qzz.xandll.morgo.domain.model.WakeSound
 import io.qzz.xandll.morgo.domain.model.AppSettings
 import io.qzz.xandll.morgo.domain.model.HomeAssistantEntity
 import io.qzz.xandll.morgo.domain.model.HomeAssistantSettings
+import io.qzz.xandll.morgo.domain.model.HomeAssistantTargets
 import io.qzz.xandll.morgo.domain.model.LessonGrid
 import io.qzz.xandll.morgo.domain.model.LessonSlot
 import io.qzz.xandll.morgo.domain.model.Station
@@ -212,6 +213,17 @@ fun SettingsScreen(
         onCheckUpdates = { viewModel.checkForUpdates() },
         updateBusy = updateBusy
     )
+
+    viewModel.radioError.collectAsState().value?.let { message ->
+        AlertDialog(
+            onDismissRequest = { viewModel.clearRadioError() },
+            title = { Text("Radiosuche") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = { viewModel.clearRadioError() }) { Text("OK") }
+            }
+        )
+    }
 
     updateNotice?.let { message ->
         AlertDialog(
@@ -981,7 +993,11 @@ fun HomeAssistantSettings(
                     )
                     Column {
                         Text(entity.name.ifBlank { entity.entityId })
-                        Text(entity.entityId, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text(
+                            "${HomeAssistantTargets.domainLabel(entity.entityId)} · ${entity.entityId}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
                     }
                 }
             }

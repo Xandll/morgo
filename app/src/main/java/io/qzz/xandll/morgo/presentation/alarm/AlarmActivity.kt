@@ -22,6 +22,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -37,6 +39,7 @@ import io.qzz.xandll.morgo.data.service.SecondaryAlarmScheduler
 import io.qzz.xandll.morgo.data.service.WakeMusic
 import io.qzz.xandll.morgo.data.service.WakeSoundService
 import io.qzz.xandll.morgo.domain.model.FollowUpPlan
+import io.qzz.xandll.morgo.domain.model.HaServiceKind
 import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.WakeSound
 import io.qzz.xandll.morgo.presentation.theme.MorgoTheme
@@ -73,8 +76,9 @@ class AlarmActivity : ComponentActivity() {
             openWakeMusic()
         }
         setContent {
-            MorgoTheme {
-                val settings = settingsRepository.loadSettings().alarm
+            val appSettings by settingsRepository.settingsFlow.collectAsState()
+            MorgoTheme(dynamicColor = appSettings.useDynamicColor) {
+                val settings = appSettings.alarm
                 val note = when {
                     kind == SecondaryAlarmScheduler.KIND_EXTRA -> "Extra-Wecker"
                     kind == SecondaryAlarmScheduler.KIND_MAIN && FollowUpPlan.shouldSchedule(true, settings) -> {
@@ -145,12 +149,12 @@ class AlarmActivity : ComponentActivity() {
         if (haSettings.url.isBlank() || haSettings.token.isBlank()) return
         CoroutineScope(Dispatchers.IO).launch {
             haSettings.wakeUpActions.forEach { entityId ->
-                when {
-                    entityId.startsWith("light.") -> repository.turnOnLight(haSettings.url, haSettings.token, entityId)
-                    entityId.startsWith("scene.") || entityId.startsWith("script.") -> {
-                        repository.activateScene(haSettings.url, haSettings.token, entityId)
-                    }
-                }
+                repository.callHomeAssistant(
+                    haSettings.url,
+                    haSettings.token,
+                    entityId,
+                    HaServiceKind.TURN_ON
+                )
             }
         }
     }

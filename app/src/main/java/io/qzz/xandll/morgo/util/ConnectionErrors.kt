@@ -3,7 +3,7 @@ package io.qzz.xandll.morgo.util
 import javax.net.ssl.SSLException
 
 /**
- * Einheitliche Nutzertexte für WebUntis, ÖBB und Home Assistant.
+ * Einheitliche Nutzertexte für WebUntis, ÖBB, Home Assistant und die Radiosuche.
  * Technische Details bleiben gekürzt und ohne Antwortkörper.
  */
 object ConnectionErrors {
@@ -15,7 +15,8 @@ object ConnectionErrors {
     enum class Service {
         WEBUNTIS,
         HAFAS,
-        HOME_ASSISTANT
+        HOME_ASSISTANT,
+        RADIO
     }
 
     fun describe(error: Throwable?, service: Service): UserFacing {
@@ -43,6 +44,12 @@ object ConnectionErrors {
                 "Falsche URL"
             isCloudflare(status, blob) ->
                 "Von Cloudflare blockiert"
+            service == Service.RADIO && isSsl(error, blob) ->
+                "Radiosuche fehlgeschlagen. Der Server nimmt die Verbindung nicht an."
+            service == Service.RADIO && isUnreachable(blob) ->
+                "Radiosuche fehlgeschlagen. Der Server ist nicht erreichbar."
+            service == Service.RADIO ->
+                "Radiosuche fehlgeschlagen."
             isSsl(error, blob) ->
                 "SSL-Fehler"
             isUnreachable(blob) ->

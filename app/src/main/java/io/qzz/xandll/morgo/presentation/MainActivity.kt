@@ -13,7 +13,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -24,7 +23,6 @@ import io.qzz.xandll.morgo.presentation.home.HomeScreen
 import io.qzz.xandll.morgo.presentation.update.UpdateDialog
 import io.qzz.xandll.morgo.presentation.onboarding.OnboardingScreen
 import io.qzz.xandll.morgo.presentation.settings.SettingsScreen
-import io.qzz.xandll.morgo.presentation.settings.SettingsViewModel
 import io.qzz.xandll.morgo.presentation.theme.MorgoTheme
 import javax.inject.Inject
 
@@ -47,8 +45,7 @@ class MainActivity : ComponentActivity() {
         }
         val openOverride = intent?.getBooleanExtra(EXTRA_OPEN_OVERRIDE, false) == true
         setContent {
-            val settingsViewModel: SettingsViewModel = hiltViewModel()
-            val settings by settingsViewModel.settings.collectAsState()
+            val settings by settingsRepository.settingsFlow.collectAsState()
             val offer by settingsRepository.updateOffer.collectAsState()
             val installStatus by updateInstaller.status.collectAsState()
             MorgoTheme(dynamicColor = settings.useDynamicColor) {

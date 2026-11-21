@@ -362,13 +362,7 @@ class MorgoRepository(
     ): Result<List<HomeAssistantEntity>> {
         return homeAssistantClient.getStates(url, token).map { states ->
             states.map { state ->
-                val type = when {
-                    state.entityId.startsWith("light.") -> EntityType.LIGHT
-                    state.entityId.startsWith("switch.") -> EntityType.SWITCH
-                    state.entityId.startsWith("scene.") -> EntityType.SCENE
-                    state.entityId.startsWith("script.") -> EntityType.SCRIPT
-                    else -> EntityType.UNKNOWN
-                }
+                val type = HomeAssistantTargets.type(state.entityId)
 
                 HomeAssistantEntity(
                     entityId = state.entityId,
@@ -384,30 +378,39 @@ class MorgoRepository(
     }
 
     /**
-     * Home Assistant: Licht einschalten
+     * Home Assistant: den zur Domain passenden Dienst aufrufen.
+     * Helligkeit gilt nur beim Einschalten einer Lampe.
      */
+    suspend fun callHomeAssistant(
+        url: String,
+        token: String,
+        entityId: String,
+        kind: HaServiceKind,
+        brightness: Int? = null
+    ): Result<Unit> {
+        val call = HomeAssistantTargets.call(entityId, kind, brightness)
+            ?: return Result.failure(IllegalArgumentException("Kein Dienst für $entityId"))
+        return homeAssistantClient.callService(
+            url,
+            token,
+            call.domain,
+            call.service,
+            HomeAssistantServiceCall(entityId = entityId, brightness = call.brightness)
+        ).map { Unit }
+    }
+
     suspend fun turnOnLight(
         url: String,
         token: String,
         entityId: String,
         brightness: Int? = null
-    ): Result<Unit> {
-        return homeAssistantClient.turnOnLight(url, token, entityId, brightness)
-            .map { Unit }
-    }
+    ): Result<Unit> = callHomeAssistant(url, token, entityId, HaServiceKind.TURN_ON, brightness)
 
-    suspend fun toggleLight(url: String, token: String, entityId: String): Result<Unit> {
-        return homeAssistantClient.toggleLight(url, token, entityId)
-            .map { Unit }
-    }
+    suspend fun toggleLight(url: String, token: String, entityId: String): Result<Unit> =
+        callHomeAssistant(url, token, entityId, HaServiceKind.TOGGLE)
 
-    /**
-     * Home Assistant: Szene aktivieren
-     */
-    suspend fun activateScene(url: String, token: String, entityId: String): Result<Unit> {
-        return homeAssistantClient.activateScene(url, token, entityId)
-            .map { Unit }
-    }
+    suspend fun activateScene(url: String, token: String, entityId: String): Result<Unit> =
+        callHomeAssistant(url, token, entityId, HaServiceKind.TURN_ON)
 }
 
 /**

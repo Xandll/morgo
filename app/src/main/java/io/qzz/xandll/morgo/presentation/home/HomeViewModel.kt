@@ -92,7 +92,7 @@ class HomeViewModel @Inject constructor(
             repository.getHomeAssistantEntities(settings.url, settings.token)
                 .onSuccess { entities ->
                     _homeAssistantEntities.value = entities.filter {
-                        it.type == EntityType.LIGHT || it.type == EntityType.SCENE
+                        HomeAssistantTargets.isSelectable(it.entityId)
                     }
                 }
         }
@@ -101,18 +101,12 @@ class HomeViewModel @Inject constructor(
     fun activateEntity(entityId: String) {
         viewModelScope.launch {
             val settings = settingsRepository.loadSettings()
-            when {
-                entityId.startsWith("light.") -> repository.turnOnLight(
-                    settings.homeAssistant.url,
-                    settings.homeAssistant.token,
-                    entityId
-                )
-                entityId.startsWith("scene.") -> repository.activateScene(
-                    settings.homeAssistant.url,
-                    settings.homeAssistant.token,
-                    entityId
-                )
-            }
+            repository.callHomeAssistant(
+                settings.homeAssistant.url,
+                settings.homeAssistant.token,
+                entityId,
+                HaServiceKind.TURN_ON
+            )
         }
     }
 

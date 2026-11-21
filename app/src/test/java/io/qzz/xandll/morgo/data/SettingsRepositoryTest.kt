@@ -1,6 +1,7 @@
 package io.qzz.xandll.morgo.data
 
 import android.content.SharedPreferences
+import io.qzz.xandll.morgo.data.datasource.RadioBrowser
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.domain.model.AppSettings
 import io.qzz.xandll.morgo.domain.model.WebUntisSettings
@@ -48,5 +49,32 @@ class SettingsRepositoryTest {
         assertEquals("", loaded.webUntis.username)
         assertEquals("", loaded.webUntis.secret)
         assertFalse(loaded.webUntis.useSecret)
+    }
+
+    @Test
+    fun `dynamic color reaches the settings flow immediately`() {
+        val regular = MemoryPrefs()
+        val repository = SettingsRepository.forPrefs(regular, MemoryPrefs())
+        assertFalse(repository.settingsFlow.value.useDynamicColor)
+        repository.saveSettings(repository.loadSettings().copy(useDynamicColor = true))
+        assertTrue(repository.settingsFlow.value.useDynamicColor)
+        assertTrue(SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings().useDynamicColor)
+    }
+
+    @Test
+    fun `stored radio browser default moves to the api host`() {
+        val regular = MemoryPrefs()
+        regular.edit().putString("radio_browser_host", "https://de1.radio-browser.info/").apply()
+        val loaded = SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings()
+        assertEquals(RadioBrowser.DEFAULT_HOST, loaded.alarm.music.radioBrowserHost)
+        assertEquals(RadioBrowser.DEFAULT_HOST, regular.getString("radio_browser_host", null))
+    }
+
+    @Test
+    fun `a custom radio host is kept`() {
+        val regular = MemoryPrefs()
+        regular.edit().putString("radio_browser_host", "https://radio.example").apply()
+        val loaded = SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings()
+        assertEquals("https://radio.example", loaded.alarm.music.radioBrowserHost)
     }
 }

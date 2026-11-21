@@ -12,8 +12,8 @@ enum class LightIntervalUnit {
 }
 
 /**
- * Licht vor dem Wecker. Manche Lampen werden durch mehrfaches Umschalten heller,
- * deshalb ist jeder Schritt nach dem Einschalten ein light.toggle.
+ * Licht vor dem Wecker. Lampen, Schalter und Helfer werden eingeschaltet und
+ * danach umgeschaltet. Skripte und Szenen bekommen bei jedem Schritt einen Aufruf.
  */
 data class PreWakeLightSettings(
     val enabled: Boolean = false,

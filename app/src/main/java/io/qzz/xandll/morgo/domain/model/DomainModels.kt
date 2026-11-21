@@ -196,6 +196,7 @@ data class HomeAssistantEntity(
 enum class EntityType {
     LIGHT,
     SWITCH,
+    INPUT_BOOLEAN,
     SCENE,
     SCRIPT,
     UNKNOWN

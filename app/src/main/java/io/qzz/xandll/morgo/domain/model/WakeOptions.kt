@@ -27,7 +27,7 @@ data class MusicAlarmSettings(
     val rampSeconds: Int = 30,
     val fallbackSeconds: Int = 20,
     val volumePercent: Int = 70,
-    val radioBrowserHost: String = "https://de1.radio-browser.info"
+    val radioBrowserHost: String = "https://de1.api.radio-browser.info"
 ) {
     fun needsNetwork(): Boolean = kind == MusicKind.SPOTIFY || kind == MusicKind.STREAM
 

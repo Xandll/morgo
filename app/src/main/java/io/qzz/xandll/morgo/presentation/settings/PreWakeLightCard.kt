@@ -27,8 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import io.qzz.xandll.morgo.domain.model.EntityType
 import io.qzz.xandll.morgo.domain.model.HomeAssistantEntity
+import io.qzz.xandll.morgo.domain.model.HomeAssistantTargets
 import io.qzz.xandll.morgo.domain.model.LightIntervalUnit
 import io.qzz.xandll.morgo.domain.model.PreWakeLightSettings
 import io.qzz.xandll.morgo.presentation.ui.IconBadge
@@ -44,18 +44,26 @@ fun PreWakeLightCard(
     onLoad: () -> Unit,
     onTest: () -> Unit,
     loading: Boolean = false,
-    statusMessage: String? = null
+    statusMessage: String? = null,
+    initialQuery: String = ""
 ) {
-    var query by rememberSaveable { mutableStateOf("") }
-    val lights = entities.filter { it.type == EntityType.LIGHT }
-    val knownIds = lights.map { it.entityId }.toSet()
+    var query by rememberSaveable { mutableStateOf(initialQuery) }
+    val choices = entities.filter { HomeAssistantTargets.isSelectable(it.entityId) }
+    val knownIds = choices.map { it.entityId }.toSet()
     val extras = light.entityIds.filter { it !in knownIds }.map { id ->
-        HomeAssistantEntity(id, id.substringAfter('.').replace('_', ' '), "", EntityType.LIGHT)
+        HomeAssistantEntity(
+            id,
+            id.substringAfter('.').replace('_', ' '),
+            "",
+            HomeAssistantTargets.type(id)
+        )
     }
-    val shown = (lights + extras).filter { entity ->
+    val shown = (choices + extras).filter { entity ->
+        val label = HomeAssistantTargets.domainLabel(entity.entityId)
         query.isBlank() ||
             entity.name.contains(query, ignoreCase = true) ||
-            entity.entityId.contains(query, ignoreCase = true)
+            entity.entityId.contains(query, ignoreCase = true) ||
+            label.contains(query, ignoreCase = true)
     }
     val intervalMax = if (light.intervalUnit == LightIntervalUnit.SECONDS) 300 else 30
     SoftCard {
@@ -76,7 +84,7 @@ fun PreWakeLightCard(
                 )
             }
             Text(
-                "Manche Lampen ändern ihre Helligkeit, wenn man sie kurz aus- und wieder einschaltet. Jeder Toggle ist eine Stufe heller.",
+                "Lampen, Schalter und Helfer werden umgeschaltet. Bei Skripten und Szenen ist jeder Schritt ein Aufruf.",
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
@@ -143,25 +151,25 @@ fun PreWakeLightCard(
                     onPlus = { onChange(light.copy(brightness = percentToBrightness(percent + 5))) }
                 )
             }
-            Text("Lichter", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("Geräte", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                label = { Text("Licht suchen") },
+                label = { Text("Name suchen") },
                 modifier = Modifier.fillMaxWidth(),
                 singleLine = true
             )
-            TextButton(onClick = onLoad, enabled = !loading) { Text(if (loading) "Lade Lichter …" else "Lichter laden") }
+            TextButton(onClick = onLoad, enabled = !loading) { Text(if (loading) "Lade Geräte …" else "Geräte laden") }
             if (loading) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (!statusMessage.isNullOrBlank()) {
                 Text(statusMessage, color = MaterialTheme.colorScheme.error)
             }
             if (shown.isEmpty() && !loading) {
                 Text(
-                    if (lights.isEmpty() && extras.isEmpty()) {
-                        "Noch keine Lichter. Lade sie aus Home Assistant."
+                    if (choices.isEmpty() && extras.isEmpty()) {
+                        "Noch nichts Passendes. Lade Lampen, Schalter, Helfer, Skripte oder Szenen."
                     } else {
-                        "Kein Licht passt zur Suche."
+                        "Nichts passt zur Suche."
                     },
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -178,7 +186,7 @@ fun PreWakeLightCard(
                     Column {
                         Text(entity.name.ifBlank { entity.entityId })
                         Text(
-                            entity.entityId,
+                            "${HomeAssistantTargets.domainLabel(entity.entityId)} · ${entity.entityId}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -201,7 +209,7 @@ fun PreWakeLightCard(
             }
             if (light.entityIds.isEmpty()) {
                 Text(
-                    "Wähle mindestens ein Licht, dann kannst du die Sequenz sofort ausprobieren.",
+                    "Wähle mindestens einen Eintrag, dann kannst du die Sequenz sofort ausprobieren.",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -46,9 +46,10 @@ fun WakeSoundCard(
     radioResults: List<RadioStation>,
     onSearchRadio: (String) -> Unit,
     onPickApp: () -> Unit,
-    onTest: () -> Unit
+    onTest: () -> Unit,
+    initialRadioQuery: String = ""
 ) {
-    var radioQuery by rememberSaveable { mutableStateOf("") }
+    var radioQuery by rememberSaveable { mutableStateOf(initialRadioQuery) }
     val music = alarm.music
     SoftCard {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
