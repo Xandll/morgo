@@ -38,7 +38,9 @@ import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.data.service.AlarmAlerts
 import io.qzz.xandll.morgo.data.service.SecondaryAlarmScheduler
 import io.qzz.xandll.morgo.data.service.MusicShuffle
+import io.qzz.xandll.morgo.data.service.SonaraPlayback
 import io.qzz.xandll.morgo.data.service.WakeMusic
+import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import io.qzz.xandll.morgo.data.service.WakeSoundService
 import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.domain.model.FollowUpPlan
@@ -130,6 +132,10 @@ class AlarmActivity : ComponentActivity() {
     private fun openWakeMusic() {
         val alarm = settingsRepository.loadSettings().alarm
         if (alarm.wakeSound != WakeSound.MUSIC || alarm.music.kind == MusicKind.STREAM) return
+        if (alarm.music.appPackage == SonaraShuffle.PACKAGE) {
+            SonaraPlayback.attachActivity(this)
+            return
+        }
         if (!WakeMusic.open(this, alarm.music)) {
             startService(Intent(this, WakeSoundService::class.java).setAction(WakeSoundService.ACTION_MUSIC_FAILED))
         } else {

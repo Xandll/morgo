@@ -33,6 +33,7 @@ import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.StreamPhase
 import io.qzz.xandll.morgo.domain.model.StreamSample
+import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import io.qzz.xandll.morgo.domain.model.WakeSound
 import io.qzz.xandll.morgo.domain.model.WakeSoundMath
 import kotlinx.coroutines.CoroutineScope
@@ -203,6 +204,10 @@ class WakeSoundService : Service() {
             fallback(WakeSoundMath.streamFailure("App", "Musik-App hat sich nicht geöffnet"))
             return
         }
+        val sonara = music.kind == MusicKind.APP && music.appPackage == SonaraShuffle.PACKAGE
+        if (sonara) {
+            SonaraPlayback.start(this, music, foregroundStartAllowed = true)
+        }
         val started = SystemClock.elapsedRealtime()
         val rampMs = music.rampSeconds.coerceAtLeast(0) * 1000L
         val target = music.volumePercent.coerceIn(0, 100) / 100f
@@ -215,14 +220,17 @@ class WakeSoundService : Service() {
             if (!musicActive()) heardQuiet = true
             val externalPlaying = music.kind != MusicKind.STREAM && heardQuiet && musicActive()
             val phase = phaseOf(player)
-            val playing = externalPlaying || WakeSoundMath.countsAsPlaying(phase, player?.playWhenReady == true)
+            val playing = SonaraPlayback.playing || externalPlaying ||
+                WakeSoundMath.countsAsPlaying(phase, player?.playWhenReady == true)
             if (music.kind == MusicKind.STREAM &&
                 WakeSoundMath.shouldRetry(elapsedSec, music.fallbackSeconds, streamErrorCode != null, lastRetrySecond)
             ) {
                 lastRetrySecond = elapsedSec
                 startStream(music)
             }
+            val sonaraFailure = if (sonara) SonaraPlayback.failure else null
             val reason = when {
+                sonaraFailure != null -> sonaraFailure
                 externalFailed -> WakeSoundMath.streamFailure("App", "Musik-App hat sich nicht geöffnet")
                 music.kind == MusicKind.STREAM -> WakeSoundMath.fallbackReason(
                     StreamSample(
@@ -235,6 +243,8 @@ class WakeSoundService : Service() {
                         errorDetail = streamErrorDetail
                     )
                 )
+                sonara && WakeSoundMath.fallbackNow(false, true, elapsedSec, playing, music.fallbackSeconds) ->
+                    "Sonara hat nach ${music.fallbackSeconds.coerceAtLeast(5)}s nicht gespielt, Klingelton"
                 WakeSoundMath.fallbackNow(music.needsNetwork(), online(), elapsedSec, playing, music.fallbackSeconds) ->
                     "Klingelton, Musik hat nicht gespielt"
                 else -> null
@@ -301,6 +311,7 @@ class WakeSoundService : Service() {
     }
 
     private fun fallback(reason: String) {
+        SonaraPlayback.cancel()
         releasePlayer()
         val text = if (reason.contains("Klingelton")) reason else "$reason, Klingelton"
         notificationManagerNotify(text)
@@ -344,6 +355,7 @@ class WakeSoundService : Service() {
 
     private fun stopEverything() {
         job?.cancel()
+        SonaraPlayback.cancel()
         releasePlayer()
         releaseRingtone()
         releaseWifiLock()

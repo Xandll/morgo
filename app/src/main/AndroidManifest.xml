@@ -27,6 +27,9 @@
         </intent>
         <package android:name="com.spotify.music" />
         <package android:name="app.sonara.mobile.native" />
+        <intent>
+            <action android:name="app.sonara.ACTION_PLAY_SHUFFLED" />
+        </intent>
     </queries>
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />

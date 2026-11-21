@@ -29,7 +29,7 @@ class MusicShufflePlanTest {
     }
 
     @Test
-    fun sonaraPlaysWithoutTogglingShuffle() {
+    fun sonaraStartsShuffledAndFallsBackInOrder() {
         val on = MusicShufflePlan.target(
             MusicAlarmSettings(kind = MusicKind.APP, appPackage = SonaraShuffle.PACKAGE, shuffle = true)
         )
@@ -39,27 +39,66 @@ class MusicShufflePlanTest {
         assertEquals(ShuffleStyle.SONARA, on?.style)
         assertEquals(SonaraShuffle.SERVICE, on?.serviceClasses?.single())
         assertEquals(on, off)
-        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(false, setOf(SonaraShuffle.PLAY_SHUFFLED)))
-        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(true, setOf("SHUFFLE", "SET_SHUFFLE")))
         assertEquals(
-            listOf(SonaraShuffle.Step.PLAY_SHUFFLED),
-            SonaraShuffle.steps(true, setOf("SHUFFLE", SonaraShuffle.PLAY_SHUFFLED))
+            listOf(SonaraShuffle.Transport.CONTROLLER, SonaraShuffle.Transport.SERVICE, SonaraShuffle.Transport.ACTIVITY),
+            SonaraShuffle.transports(foregroundStartAllowed = true)
         )
-        assertNull(SonaraShuffle.playlistArgument("  "))
-        assertEquals("morgen", SonaraShuffle.playlistArgument(" morgen "))
         assertEquals(
-            listOf(SonaraPlaylist("", SonaraShuffle.FAVORITES)),
+            listOf(SonaraShuffle.Transport.CONTROLLER, SonaraShuffle.Transport.ACTIVITY),
+            SonaraShuffle.transports(foregroundStartAllowed = false)
+        )
+        assertEquals(false, SonaraShuffle.activityAfterService(serviceAccepted = true))
+        assertEquals(true, SonaraShuffle.activityAfterService(serviceAccepted = false))
+        assertEquals(SonaraShuffle.Timing(6_000L, 8_000L), SonaraShuffle.timing(20))
+        assertEquals(SonaraShuffle.Timing(2_500L, 2_500L), SonaraShuffle.timing(5))
+        assertNull(SonaraShuffle.playlistArgument("  "))
+        assertNull(SonaraShuffle.playlistArgument(SonaraShuffle.LIKED))
+        assertNull(SonaraShuffle.playlistArgument(SonaraShuffle.LIKED_SHORT))
+        assertEquals("playlist:morgen", SonaraShuffle.playlistArgument(" playlist:morgen "))
+        assertEquals("playlist:morgen:song:1", SonaraShuffle.playlistArgument("playlist:morgen:song:1"))
+        assertNull(SonaraShuffle.child("tab:playlists", "Playlists"))
+        assertNull(SonaraShuffle.child("playlist:morgen:song:1", "Titel"))
+        assertEquals(SonaraPlaylist("playlist:pin", "Angepinnt"), SonaraShuffle.child("playlist:pin", "Angepinnt"))
+        assertEquals(
+            listOf(SonaraPlaylist(SonaraShuffle.LIKED, SonaraShuffle.FAVORITES)),
             SonaraCatalog.choices(emptyList())
         )
         assertEquals(
-            listOf(SonaraPlaylist("", SonaraShuffle.FAVORITES), SonaraPlaylist("a", "Morgen")),
+            listOf(
+                SonaraPlaylist(SonaraShuffle.LIKED, SonaraShuffle.FAVORITES),
+                SonaraPlaylist("playlist:pin", "Angepinnt"),
+                SonaraPlaylist("playlist:spaeter", "Später")
+            ),
             SonaraCatalog.choices(
-                listOf(SonaraPlaylist("a", "Morgen"), SonaraPlaylist(" ", "leer"), SonaraPlaylist("a", "doppelt"))
+                listOf(
+                    SonaraPlaylist("playlist:pin", "Angepinnt"),
+                    SonaraPlaylist("playlist:pin:song:1", "Titel"),
+                    SonaraPlaylist("tab:playlists", "Playlists"),
+                    SonaraPlaylist("playlist:spaeter", "Später"),
+                    SonaraPlaylist("playlist:pin", "doppelt")
+                )
             )
         )
+        val saved = SonaraCatalog.choices(emptyList(), "playlist:weg", "Morgen")
+        assertEquals(SonaraPlaylist("playlist:weg", "Morgen"), saved.last())
+        val unknown = SonaraShuffle.read(SonaraShuffle.Code.BAD_VALUE, "Unbekannte Playlist", playing = true)
+        assertEquals(SonaraShuffle.Verdict.RINGTONE, unknown.verdict)
+        assertEquals("Unbekannte Playlist", unknown.message)
         assertEquals(
-            listOf(SonaraPlaylist("", SonaraShuffle.FAVORITES), SonaraPlaylist("weg", "Morgen")),
-            SonaraCatalog.choices(emptyList(), "weg", "Morgen")
+            "Sonara ist nicht eingeloggt",
+            SonaraShuffle.read(SonaraShuffle.Code.AUTHENTICATION_EXPIRED, "  ", playing = false).message
+        )
+        assertEquals(
+            SonaraShuffle.Verdict.PLAYING,
+            SonaraShuffle.read(SonaraShuffle.Code.SUCCESS, null, playing = false).verdict
+        )
+        assertEquals(
+            SonaraShuffle.Verdict.NEXT_TRANSPORT,
+            SonaraShuffle.read(SonaraShuffle.Code.OTHER, null, playing = false).verdict
+        )
+        assertEquals(
+            SonaraShuffle.Verdict.PLAYING,
+            SonaraShuffle.read(SonaraShuffle.Code.OTHER, null, playing = true).verdict
         )
         assertEquals(
             "Sonara · Morgen",
@@ -67,7 +106,7 @@ class MusicShufflePlanTest {
                 kind = MusicKind.APP,
                 appPackage = SonaraShuffle.PACKAGE,
                 appLabel = "Sonara",
-                sonaraPlaylistId = "a",
+                sonaraPlaylistId = "playlist:morgen",
                 sonaraPlaylistTitle = "Morgen"
             ).summary()
         )

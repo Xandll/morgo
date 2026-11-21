@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.3
+
+- Sonara 1.0.119 startet die gewählte Playlist gemischt. Die Liste kommt aus Sonara, sonst sind es die Lieblingssongs. Meldet Sonara einen Fehler, steht der Text in der Benachrichtigung und der Klingelton übernimmt.
+
 ## 1.6.2
 
 - Der Radio-Stream im Musik-Wecker hält das WLAN wach und wartet die eingestellte Fallback-Zeit, auch wenn das Netz nach dem Wecken erst hochfährt. Eine stille Lautstärkerampe gilt nicht als Ausfall. Scheitert der Stream, stehen Fehlercode und Grund in der Benachrichtigung und beim Testen.

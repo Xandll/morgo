@@ -78,6 +78,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import io.qzz.xandll.morgo.data.service.MusicShuffle
+import io.qzz.xandll.morgo.data.service.SonaraPlayback
 import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import io.qzz.xandll.morgo.data.service.WakeMusic
 import io.qzz.xandll.morgo.data.service.WakeSoundService
@@ -226,7 +227,9 @@ fun SettingsScreen(
         onTestSound = {
             val alarm = settings.alarm
             if (alarm.wakeSound == WakeSound.MUSIC && alarm.music.kind != MusicKind.STREAM) {
-                if (!WakeMusic.open(context, alarm.music)) {
+                if (alarm.music.appPackage == SonaraShuffle.PACKAGE) {
+                    (context as? android.app.Activity)?.let { SonaraPlayback.attachActivity(it) }
+                } else if (!WakeMusic.open(context, alarm.music)) {
                     context.startService(
                         Intent(context, WakeSoundService::class.java).setAction(WakeSoundService.ACTION_MUSIC_FAILED)
                     )

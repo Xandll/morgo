@@ -191,7 +191,7 @@ fun WakeSoundCard(
                         }
                     }
                 }
-                if (music.kind != MusicKind.STREAM) {
+                if (music.kind != MusicKind.STREAM && music.appPackage != SonaraShuffle.PACKAGE) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Column(Modifier.weight(1f)) {
                             Text("Zufällige Wiedergabe")
@@ -244,7 +244,8 @@ private fun SonaraPlaylistField(
     onSelect: (SonaraPlaylist) -> Unit
 ) {
     val choices = SonaraCatalog.choices(browsed, selectedId, selectedTitle)
-    val shown = choices.firstOrNull { it.id == selectedId.trim() }?.title ?: SonaraShuffle.FAVORITES
+    val selected = if (SonaraShuffle.isFavorites(selectedId)) SonaraShuffle.LIKED else selectedId.trim()
+    val shown = choices.firstOrNull { it.id == selected }?.title ?: SonaraShuffle.FAVORITES
     var open by rememberSaveable { mutableStateOf(false) }
     ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
         OutlinedTextField(
@@ -269,7 +270,7 @@ private fun SonaraPlaylistField(
         }
     }
     Text(
-        "Ohne erreichbare Liste bleiben die Lieblingssongs. Gemischt spielt Sonara sie erst, wenn sie den Befehl anbietet.",
+        "Lieblingssongs, oder eine Playlist aus Sonara. Sie startet gemischt. Klappt das nicht, klingelt der Klingelton.",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )

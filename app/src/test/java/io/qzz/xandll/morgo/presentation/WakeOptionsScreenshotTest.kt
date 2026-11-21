@@ -111,7 +111,7 @@ class WakeOptionsScreenshotTest {
                     kind = MusicKind.APP,
                     appPackage = SonaraShuffle.PACKAGE,
                     appLabel = "Sonara",
-                    sonaraPlaylistId = "morgen",
+                    sonaraPlaylistId = "playlist:morgen",
                     sonaraPlaylistTitle = "Morgen"
                 )
             ),
@@ -121,8 +121,8 @@ class WakeOptionsScreenshotTest {
             onPickApp = {},
             onTest = {},
             sonaraPlaylists = listOf(
-                SonaraPlaylist("morgen", "Morgen"),
-                SonaraPlaylist("fokus", "Fokus")
+                SonaraPlaylist("playlist:morgen", "Morgen"),
+                SonaraPlaylist("playlist:fokus", "Fokus")
             )
         )
     }
