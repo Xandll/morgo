@@ -9,7 +9,9 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import io.qzz.xandll.morgo.data.repository.MorgoRepository
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.data.service.EveningCheckScheduler
+import io.qzz.xandll.morgo.data.receiver.LeaveLightReceiver
 import io.qzz.xandll.morgo.data.receiver.PreWakeLightReceiver
+import io.qzz.xandll.morgo.data.service.LeaveLightScheduler
 import io.qzz.xandll.morgo.data.service.PreWakeLightScheduler
 import io.qzz.xandll.morgo.data.worker.AlarmRefresh
 import io.qzz.xandll.morgo.domain.model.AppSettings
@@ -53,6 +55,7 @@ class SettingsViewModel @Inject constructor(
     private val repository: MorgoRepository,
     private val eveningCheckScheduler: EveningCheckScheduler,
     private val preWakeLightScheduler: PreWakeLightScheduler,
+    private val leaveLightScheduler: LeaveLightScheduler,
     private val radioBrowser: RadioBrowserClient,
     private val updateCoordinator: UpdateCoordinator
 ) : ViewModel() {
@@ -155,6 +158,11 @@ class SettingsViewModel @Inject constructor(
             preWakeLightScheduler.rescheduleStored(settings.homeAssistant.preWake)
             AlarmRefresh.enqueue(context)
         }
+        if (previous.homeAssistant.preWake != settings.homeAssistant.preWake ||
+            previous.train.walkingTimeMinutes != settings.train.walkingTimeMinutes
+        ) {
+            leaveLightScheduler.rearm(settings)
+        }
     }
 
     private val _lightsLoading = MutableStateFlow(false)
@@ -190,6 +198,13 @@ class SettingsViewModel @Inject constructor(
             action = PreWakeLightReceiver.ACTION_RUN
             putExtra(PreWakeLightReceiver.EXTRA_STEP, 0)
             putExtra(PreWakeLightReceiver.EXTRA_TEST, true)
+        })
+    }
+
+    fun testLeaveLight() {
+        context.sendBroadcast(Intent(context, LeaveLightReceiver::class.java).apply {
+            action = LeaveLightReceiver.ACTION_OFF
+            putExtra(LeaveLightReceiver.EXTRA_TEST, true)
         })
     }
 

@@ -5,6 +5,8 @@ import io.qzz.xandll.morgo.data.datasource.RadioBrowser
 import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.domain.model.AppSettings
+import io.qzz.xandll.morgo.domain.model.LeaveOffChoice
+import io.qzz.xandll.morgo.domain.model.PreWakeLightSettings
 import io.qzz.xandll.morgo.domain.model.WebUntisSettings
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -88,5 +90,29 @@ class SettingsRepositoryTest {
         regular.edit().putString("radio_browser_host", "https://radio.example").apply()
         val loaded = SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings()
         assertEquals("https://radio.example", loaded.alarm.music.radioBrowserHost)
+    }
+
+    @Test
+    fun `leave light stays off until it is saved`() {
+        val regular = MemoryPrefs()
+        val repository = SettingsRepository.forPrefs(regular, MemoryPrefs())
+        val loaded = repository.loadSettings()
+        assertFalse(loaded.homeAssistant.preWake.leaveOffEnabled)
+        assertEquals(0, loaded.homeAssistant.preWake.leaveOffOffsetMinutes)
+        val next = loaded.copy(
+            homeAssistant = loaded.homeAssistant.copy(
+                preWake = PreWakeLightSettings(
+                    entityIds = listOf("script.licht_1"),
+                    leaveOffEnabled = true,
+                    leaveOffOffsetMinutes = 2,
+                    leaveOff = mapOf("script.licht_1" to LeaveOffChoice(calls = 2))
+                )
+            )
+        )
+        repository.saveSettings(next)
+        val again = SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings().homeAssistant.preWake
+        assertTrue(again.leaveOffEnabled)
+        assertEquals(2, again.leaveOffOffsetMinutes)
+        assertEquals(2, again.leaveOff.getValue("script.licht_1").calls)
     }
 }

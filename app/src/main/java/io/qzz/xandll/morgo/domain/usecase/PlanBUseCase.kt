@@ -79,7 +79,8 @@ class PlanBUseCase @Inject constructor(
                         reason = PlanBReason.ON_TIME,
                         alternativeConnection = null,
                         newWakeTime = null,
-                        message = "Zug fährt pünktlich"
+                        message = "Zug fährt pünktlich",
+                        departureConnection = preferredConnection
                     ))
                 }
                 
@@ -94,7 +95,8 @@ class PlanBUseCase @Inject constructor(
                             reason = PlanBReason.DELAYED_OK,
                             alternativeConnection = null,
                             newWakeTime = null,
-                            message = "Zug hat $delayMinutes Min Verspätung, kommt aber noch rechtzeitig an"
+                            message = "Zug hat $delayMinutes Min Verspätung, kommt aber noch rechtzeitig an",
+                            departureConnection = preferredConnection
                         ))
                     }
                     
@@ -155,7 +157,8 @@ class PlanBUseCase @Inject constructor(
                     reason = PlanBReason.NO_ALTERNATIVE,
                     alternativeConnection = bestLateConnection,
                     newWakeTime = null,
-                    message = "Keine Alternative. Beste Option: ${delayMinutes.coerceAtLeast(0)} Min zu spät"
+                    message = "Keine Alternative. Beste Option: ${delayMinutes.coerceAtLeast(0)} Min zu spät",
+                    departureConnection = bestLateConnection
                 ))
             }
 
@@ -194,7 +197,8 @@ class PlanBUseCase @Inject constructor(
             reason = reason,
             alternativeConnection = bestAlternative,
             newWakeTime = newWakeTime,
-            message = "Bevorzugter Zug $reasonText. Alternative: ${formatTime(bestAlternative.departure.plannedTime)} Uhr, neue Weckzeit ${formatTime(newWakeTime)} Uhr"
+            message = "Bevorzugter Zug $reasonText. Alternative: ${formatTime(bestAlternative.departure.plannedTime)} Uhr, neue Weckzeit ${formatTime(newWakeTime)} Uhr",
+            departureConnection = bestAlternative
         ))
     }
 
@@ -229,7 +233,8 @@ data class PlanBResult(
     val reason: PlanBReason,
     val alternativeConnection: TrainConnection?,
     val newWakeTime: LocalTime?,
-    val message: String
+    val message: String,
+    val departureConnection: TrainConnection? = null
 )
 
 enum class PlanBReason {

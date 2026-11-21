@@ -33,6 +33,8 @@ import io.qzz.xandll.morgo.presentation.home.HomeUiState
 import io.qzz.xandll.morgo.presentation.home.MorningDashboard
 import io.qzz.xandll.morgo.presentation.home.TomorrowEditor
 import io.qzz.xandll.morgo.presentation.onboarding.OnboardingFrame
+import io.qzz.xandll.morgo.domain.model.LeaveOffChoice
+import io.qzz.xandll.morgo.presentation.settings.LeaveLightOffCard
 import io.qzz.xandll.morgo.presentation.settings.LessonGridStatus
 import io.qzz.xandll.morgo.presentation.settings.PreWakeLightCard
 import io.qzz.xandll.morgo.presentation.settings.SettingsBody
@@ -66,6 +68,7 @@ class MorgoScreenshotTest {
     @Test fun settingsHomeLight() = shot("settings-smarthome-light", false) { Settings(2) }
     @Test fun preWakeLightSettings() = shot("licht-vor-dem-wecken-light", false) { LightSettings() }
     @Test fun preWakeLightSettingsDark() = shot("licht-vor-dem-wecken-dark", true) { LightSettings() }
+    @Test fun leaveLightOff() = shot("licht-aus-beim-losgehen", false) { LeaveOffSettings() }
     @Test fun settingsHomeDark() = shot("settings-smarthome-dark", true) { Settings(2) }
     @Test fun settingsHomeEditLight() = shot("settings-smarthome-edit-light", false) { Settings(2, homeEdit = true) }
     @Test fun settingsHomeEditDark() = shot("settings-smarthome-edit-dark", true) { Settings(2, homeEdit = true) }
@@ -225,6 +228,27 @@ class MorgoScreenshotTest {
             initialQuery = "",
             onChange = {},
             onLoad = {},
+            onTest = {}
+        )
+    }
+
+    @Composable
+    private fun LeaveOffSettings() {
+        LeaveLightOffCard(
+            light = PreWakeLightSettings(
+                enabled = true,
+                entityIds = listOf("light.schlafzimmer", "script.licht_1", "scene.morgen"),
+                leaveOffEnabled = true,
+                leaveOffOffsetMinutes = 2,
+                leaveOff = mapOf("script.licht_1" to LeaveOffChoice(calls = 2))
+            ),
+            entities = listOf(
+                HomeAssistantEntity("light.schlafzimmer", "Schlafzimmer", "on", EntityType.LIGHT),
+                HomeAssistantEntity("script.licht_1", "Licht 1", "off", EntityType.SCRIPT),
+                HomeAssistantEntity("scene.morgen", "Morgenlicht", "off", EntityType.SCENE),
+                HomeAssistantEntity("script.aus", "Licht aus", "off", EntityType.SCRIPT)
+            ),
+            onChange = {},
             onTest = {}
         )
     }

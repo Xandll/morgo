@@ -4,6 +4,8 @@ import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.domain.model.AlarmPlan
 import io.qzz.xandll.morgo.domain.model.AppSettings
+import io.qzz.xandll.morgo.domain.model.ConnectionStatus
+import io.qzz.xandll.morgo.domain.model.LeaveLightPlan
 import java.time.LocalDate
 import java.time.LocalTime
 import javax.inject.Inject
@@ -15,16 +17,25 @@ class MorningAlarmSync @Inject constructor(
     private val alarms: AlarmSchedulerService,
     private val lights: PreWakeLightScheduler,
     private val secondary: SecondaryAlarmScheduler,
+    private val leaveLights: LeaveLightScheduler,
     private val settingsRepository: SettingsRepository
 ) {
     fun apply(date: LocalDate, plan: AlarmPlan?, settings: AppSettings) {
         if (plan?.rings == true) {
             move(date, plan.alarmTime, settings, plan.daySubjects, AlarmFace.DEFAULT_TITLE)
+            val train = plan.trainConnection?.takeIf { it.status != ConnectionStatus.CANCELLED }
+            val departure = train?.let { LeaveLightPlan.departureOf(it) }
+            if (departure != null) {
+                leaveLights.schedule(date, departure, settings)
+            } else {
+                leaveLights.cancel()
+            }
         } else {
             settingsRepository.setAlarmTitle(AlarmFace.DEFAULT_TITLE)
             alarms.cancelAlarm()
             lights.cancel()
             secondary.cancelAll()
+            leaveLights.cancel()
         }
     }
 

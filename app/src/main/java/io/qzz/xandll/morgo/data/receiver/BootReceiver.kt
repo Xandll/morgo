@@ -7,6 +7,7 @@ import dagger.hilt.android.EntryPointAccessors
 import io.qzz.xandll.morgo.data.update.UpdateScheduler
 import io.qzz.xandll.morgo.data.worker.AlarmRefresh
 import io.qzz.xandll.morgo.data.service.EveningCheckScheduler
+import io.qzz.xandll.morgo.data.service.LeaveLightScheduler
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import dagger.hilt.EntryPoint
 import dagger.hilt.InstallIn
@@ -27,6 +28,7 @@ class BootReceiver : BroadcastReceiver() {
         val entry = EntryPointAccessors.fromApplication(context, RescheduleEntryPoint::class.java)
         val settings = entry.settingsRepository().loadSettings()
         entry.eveningCheckScheduler().reschedule(settings)
+        entry.leaveLightScheduler().rearm(settings)
         UpdateScheduler.schedule(context, settings.update.enabled)
         AlarmRefresh.enqueue(context)
     }
@@ -37,4 +39,5 @@ class BootReceiver : BroadcastReceiver() {
 interface RescheduleEntryPoint {
     fun settingsRepository(): SettingsRepository
     fun eveningCheckScheduler(): EveningCheckScheduler
+    fun leaveLightScheduler(): LeaveLightScheduler
 }

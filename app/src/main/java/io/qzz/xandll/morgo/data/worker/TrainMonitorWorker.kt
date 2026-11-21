@@ -12,9 +12,12 @@ import io.qzz.xandll.morgo.MorgoApplication
 import io.qzz.xandll.morgo.R
 import io.qzz.xandll.morgo.data.repository.MorgoRepository
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
+import io.qzz.xandll.morgo.data.service.LeaveLightScheduler
 import io.qzz.xandll.morgo.data.service.MorningAlarmSync
+import io.qzz.xandll.morgo.domain.model.LeaveLightPlan
 import io.qzz.xandll.morgo.domain.model.LessonGrid
 import io.qzz.xandll.morgo.domain.usecase.CalculateAlarmTimeUseCase
+import io.qzz.xandll.morgo.domain.usecase.PlanBResult
 import java.time.LocalDate
 import java.time.LocalTime
 
@@ -30,14 +33,16 @@ class TrainMonitorWorker @AssistedInject constructor(
     private val repository: MorgoRepository,
     private val morningAlarmSync: MorningAlarmSync,
     private val calculateAlarmTimeUseCase: CalculateAlarmTimeUseCase,
-    private val planBUseCase: io.qzz.xandll.morgo.domain.usecase.PlanBUseCase
+    private val planBUseCase: io.qzz.xandll.morgo.domain.usecase.PlanBUseCase,
+    private val leaveLights: LeaveLightScheduler
 ) : CoroutineWorker(appContext, workerParams) {
 
     override suspend fun doWork(): Result {
         return try {
             val settings = settingsRepository.loadSettings()
-            
-            if (!settings.alarm.planBEnabled) {
+            val leaveEnabled = settings.homeAssistant.preWake.leaveOffEnabled
+
+            if (!settings.alarm.planBEnabled && !leaveEnabled) {
                 return Result.success()
             }
             
@@ -60,12 +65,16 @@ class TrainMonitorWorker @AssistedInject constructor(
                 ?.let { LessonGrid.fromTimegrids(it) }
                 .orEmpty()
 
-            val planBResult = planBUseCase.evaluateForFirstLesson(
-                date = tomorrow,
-                lessons = lessons,
-                slots = slots,
-                settings = settings
-            ).getOrNull()
+            val planBResult = if (settings.alarm.planBEnabled) {
+                planBUseCase.evaluateForFirstLesson(
+                    date = tomorrow,
+                    lessons = lessons,
+                    slots = slots,
+                    settings = settings
+                ).getOrNull()
+            } else {
+                null
+            }
 
             if (planBResult != null && planBResult.needsPlanB) {
                 sendNotification(
@@ -99,12 +108,36 @@ class TrainMonitorWorker @AssistedInject constructor(
                 }
             }
 
+            if (leaveEnabled) {
+                refreshLeaveLights(tomorrow, settings, planBResult)
+            }
+
             Result.success()
         } catch (e: Exception) {
             Result.failure()
         }
     }
     
+    private suspend fun refreshLeaveLights(
+        date: LocalDate,
+        settings: io.qzz.xandll.morgo.domain.model.AppSettings,
+        planBResult: PlanBResult?
+    ) {
+        val fresh = calculateAlarmTimeUseCase.execute(date, settings).getOrNull()
+        val dropped = planBResult?.needsPlanB == true && planBResult.departureConnection == null
+        val departure = LeaveLightPlan.chosenDeparture(
+            rings = fresh?.rings == true,
+            connection = fresh?.trainConnection,
+            planBConnection = planBResult?.departureConnection,
+            planBDroppedTrain = dropped
+        )
+        if (departure != null) {
+            leaveLights.schedule(date, departure, settings)
+        } else {
+            leaveLights.cancel()
+        }
+    }
+
     private suspend fun executeHACancellationAction(settings: io.qzz.xandll.morgo.domain.model.AppSettings) {
         // Placeholder für HA-Aktion bei Zugausfall
         // Kann später mit spezifischer Entity-ID erweitert werden

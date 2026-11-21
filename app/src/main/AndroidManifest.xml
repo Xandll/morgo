@@ -85,6 +85,11 @@
             android:exported="false" />
 
         <receiver
+            android:name=".data.receiver.LeaveLightReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
+        <receiver
             android:name=".data.update.UpdateDownloadReceiver"
             android:exported="true">
             <intent-filter>

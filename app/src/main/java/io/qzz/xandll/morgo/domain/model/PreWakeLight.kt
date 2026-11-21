@@ -22,7 +22,10 @@ data class PreWakeLightSettings(
     val toggleCount: Int = 3,
     val intervalAmount: Int = 15,
     val intervalUnit: LightIntervalUnit = LightIntervalUnit.SECONDS,
-    val brightness: Int? = null
+    val brightness: Int? = null,
+    val leaveOffEnabled: Boolean = false,
+    val leaveOffOffsetMinutes: Int = 0,
+    val leaveOff: Map<String, LeaveOffChoice> = emptyMap()
 ) {
     fun isActive(): Boolean = enabled && entityIds.isNotEmpty()
 

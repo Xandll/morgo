@@ -230,6 +230,9 @@ class SettingsRepository private constructor(
             putInt(KEY_PREWAKE_INTERVAL, preWake.intervalAmount)
             putString(KEY_PREWAKE_UNIT, preWake.intervalUnit.name)
             putInt(KEY_PREWAKE_BRIGHTNESS, preWake.brightness ?: -1)
+            putBoolean(KEY_LEAVE_ENABLED, preWake.leaveOffEnabled)
+            putInt(KEY_LEAVE_OFFSET, preWake.leaveOffOffsetMinutes)
+            putString(KEY_LEAVE_CHOICES, LeaveLightPlan.encode(preWake.leaveOff))
             putBoolean(KEY_ALARM_ENABLED, settings.alarm.enabled)
             putInt(KEY_ALARM_DEFAULT_HOUR, settings.alarm.defaultWakeTime.hour)
             putInt(KEY_ALARM_DEFAULT_MINUTE, settings.alarm.defaultWakeTime.minute)
@@ -326,7 +329,12 @@ class SettingsRepository private constructor(
             toggleCount = regularPrefs.getInt(KEY_PREWAKE_TOGGLES, 3),
             intervalAmount = regularPrefs.getInt(KEY_PREWAKE_INTERVAL, 15),
             intervalUnit = unit,
-            brightness = brightness.takeIf { it in 1..255 }
+            brightness = brightness.takeIf { it in 1..255 },
+            leaveOffEnabled = regularPrefs.getBoolean(KEY_LEAVE_ENABLED, false),
+            leaveOffOffsetMinutes = regularPrefs.getInt(KEY_LEAVE_OFFSET, 0),
+            leaveOff = LeaveLightPlan.decode(
+                regularPrefs.getString(KEY_LEAVE_CHOICES, null)
+            )
         )
     }
 
@@ -417,6 +425,9 @@ class SettingsRepository private constructor(
         private const val KEY_PREWAKE_INTERVAL = "prewake_interval"
         private const val KEY_PREWAKE_UNIT = "prewake_unit"
         private const val KEY_PREWAKE_BRIGHTNESS = "prewake_brightness"
+        private const val KEY_LEAVE_ENABLED = "leave_light_enabled"
+        private const val KEY_LEAVE_OFFSET = "leave_light_offset"
+        private const val KEY_LEAVE_CHOICES = "leave_light_choices"
         private const val KEY_ALARM_TITLE = "alarm_face_title"
         private const val KEY_ALARM_ENABLED = "alarm_enabled"
         private const val KEY_ALARM_DEFAULT_HOUR = "alarm_default_hour"

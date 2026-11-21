@@ -194,7 +194,7 @@ private fun ReadyMorning(
     ) {
         item {
             HeroHeader(dark = dark, dateLabel = dateLabel, onSettings = onSettings) {
-                HeroTime(plan, state.date, state.lightHint, state.extraLines)
+                HeroTime(plan, state.date, state.lightHint, state.leaveHint, state.extraLines)
             }
         }
         item {
@@ -252,7 +252,13 @@ private fun HeroHeader(
 }
 
 @Composable
-private fun HeroTime(plan: AlarmPlan?, date: LocalDate, lightHint: String?, extraLines: List<String>) {
+private fun HeroTime(
+    plan: AlarmPlan?,
+    date: LocalDate,
+    lightHint: String?,
+    leaveHint: String?,
+    extraLines: List<String>
+) {
     val ink = if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.White else Color(0xFF1E2350)
     val rings = plan?.rings == true
     val timeText = if (rings && plan != null) {
@@ -282,6 +288,9 @@ private fun HeroTime(plan: AlarmPlan?, date: LocalDate, lightHint: String?, extr
         Text(detail, color = ink.copy(alpha = 0.9f), style = MaterialTheme.typography.titleMedium)
         if (lightHint != null) {
             Text(lightHint, color = ink.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyLarge)
+        }
+        if (leaveHint != null) {
+            Text(leaveHint, color = ink.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyLarge)
         }
         extraLines.forEach { line ->
             Text(line, color = ink.copy(alpha = 0.9f), style = MaterialTheme.typography.bodyLarge)

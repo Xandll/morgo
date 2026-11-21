@@ -53,7 +53,8 @@ class HomeViewModel @Inject constructor(
                     wakeActions = settings.homeAssistant.wakeUpActions,
                     dynamicColor = settings.useDynamicColor,
                     lightHint = lightHint(alarmPlan, settings.homeAssistant.preWake),
-                    extraLines = extraLines(alarmPlan, settings.alarm)
+                    extraLines = extraLines(alarmPlan, settings.alarm),
+                    leaveHint = leaveHint(tomorrow, alarmPlan, settings)
                 )
                 loadHomeAssistantEntities(settings.homeAssistant)
             } catch (e: Exception) {
@@ -115,6 +116,24 @@ class HomeViewModel @Inject constructor(
         return PreWakeLightPlan.hint(plan.alarmTime, light.leadMinutes)
     }
 
+    private fun leaveHint(date: LocalDate, plan: AlarmPlan?, settings: AppSettings): String? {
+        val light = settings.homeAssistant.preWake
+        if (!light.leaveOffEnabled) return null
+        val departure = LeaveLightPlan.chosenDeparture(
+            rings = plan?.rings == true,
+            connection = plan?.trainConnection,
+            planBConnection = null,
+            planBDroppedTrain = false
+        ) ?: return null
+        val at = LeaveLightPlan.leaveAt(
+            date,
+            departure,
+            settings.train.walkingTimeMinutes,
+            light.leaveOffOffsetMinutes
+        )
+        return LeaveLightPlan.hint(at.toLocalTime())
+    }
+
     private fun extraLines(plan: AlarmPlan?, alarm: AlarmSettings): List<String> {
         if (plan == null || !plan.rings) return emptyList()
         return ExtraAlarmPlan.lines(plan.alarmTime, plan.daySubjects, alarm.extraAlarms)
@@ -129,7 +148,8 @@ sealed class HomeUiState {
         val wakeActions: List<String>,
         val dynamicColor: Boolean,
         val lightHint: String? = null,
-        val extraLines: List<String> = emptyList()
+        val extraLines: List<String> = emptyList(),
+        val leaveHint: String? = null
     ) : HomeUiState()
     data class Error(val message: String) : HomeUiState()
 }

@@ -211,6 +211,7 @@ fun SettingsScreen(
         testingHome = testBusy == ConnectionTestTarget.HOME_ASSISTANT,
         testResult = testResult,
         onTestLight = { viewModel.testPreWakeLight() },
+        onTestLeaveLight = { viewModel.testLeaveLight() },
         radioResults = viewModel.radioStations.collectAsState().value,
         onSearchRadio = { viewModel.searchRadio(it) },
         onPickApp = { pickApp.launch(WakeMusic.pickIntent(settings.alarm.music.searchQuery)) },
@@ -321,7 +322,8 @@ fun SettingsBody(
     onCheckUpdates: () -> Unit = {},
     updateBusy: Boolean = false,
     fullScreenMissing: Boolean = false,
-    onAllowFullScreen: () -> Unit = {}
+    onAllowFullScreen: () -> Unit = {},
+    onTestLeaveLight: () -> Unit = {}
 ) {
     val pagerState = rememberPagerState(initialPage = tab.coerceIn(0, tabs.lastIndex)) { tabs.size }
     LaunchedEffect(pagerState.currentPage) {
@@ -384,6 +386,12 @@ fun SettingsBody(
                                     onTest = onTestLight,
                                     loading = lightsLoading,
                                     statusMessage = lightsMessage
+                                )
+                                LeaveLightOffCard(
+                                    light = settings.homeAssistant.preWake,
+                                    entities = entities,
+                                    onChange = { onHome(settings.homeAssistant.copy(preWake = it)) },
+                                    onTest = onTestLeaveLight
                                 )
                             }
                             else -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
