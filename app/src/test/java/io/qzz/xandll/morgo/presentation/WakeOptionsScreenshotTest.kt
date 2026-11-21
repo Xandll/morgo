@@ -16,6 +16,8 @@ import io.qzz.xandll.morgo.domain.model.Lesson
 import io.qzz.xandll.morgo.domain.model.LessonStatus
 import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
+import io.qzz.xandll.morgo.domain.model.SonaraPlaylist
+import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import io.qzz.xandll.morgo.domain.model.WakeSound
 import io.qzz.xandll.morgo.domain.model.LessonSlot
 import io.qzz.xandll.morgo.domain.model.WakeTimeRule
@@ -44,6 +46,8 @@ class WakeOptionsScreenshotTest {
     @Test fun followUpDark() = shot("nachwecker-dark", true) { FollowUpSample(false) }
     @Test fun followUpMusicLight() = shot("nachwecker-musik-light", false) { FollowUpSample(true) }
     @Test fun followUpMusicDark() = shot("nachwecker-musik-dark", true) { FollowUpSample(true) }
+    @Test fun sonaraLight() = shot("sonara-playlist-light", false) { SonaraSample() }
+    @Test fun sonaraDark() = shot("sonara-playlist-dark", true) { SonaraSample() }
     @Test fun musicLight() = shot("musik-wecker-light", false) { MusicSample() }
     @Test fun musicDark() = shot("musik-wecker-dark", true) { MusicSample() }
     @Test fun extraLight() = shot("extra-wecker-light", false) { ExtraSample() }
@@ -95,6 +99,31 @@ class WakeOptionsScreenshotTest {
             onSearchRadio = {},
             onPickApp = {},
             onTest = {}
+        )
+    }
+
+    @Composable
+    private fun SonaraSample() {
+        WakeSoundCard(
+            alarm = AlarmSettings(
+                wakeSound = WakeSound.MUSIC,
+                music = MusicAlarmSettings(
+                    kind = MusicKind.APP,
+                    appPackage = SonaraShuffle.PACKAGE,
+                    appLabel = "Sonara",
+                    sonaraPlaylistId = "morgen",
+                    sonaraPlaylistTitle = "Morgen"
+                )
+            ),
+            onChange = {},
+            radioResults = emptyList(),
+            onSearchRadio = {},
+            onPickApp = {},
+            onTest = {},
+            sonaraPlaylists = listOf(
+                SonaraPlaylist("morgen", "Morgen"),
+                SonaraPlaylist("fokus", "Fokus")
+            )
         )
     }
 

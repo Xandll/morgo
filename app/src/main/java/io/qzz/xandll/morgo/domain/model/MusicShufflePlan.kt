@@ -9,7 +9,7 @@ enum class ShuffleStyle {
     /** MediaBrowser, setShuffleMode und Deep-Links. */
     GENERIC,
 
-    /** Sonara: MediaController.play(), Shuffle nur über SET_SHUFFLE. */
+    /** Sonara: PLAY_SHUFFLED, wenn die Session den Befehl anbietet, sonst play(). */
     SONARA
 }
 

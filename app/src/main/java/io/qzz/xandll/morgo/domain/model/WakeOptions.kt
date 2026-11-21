@@ -28,14 +28,24 @@ data class MusicAlarmSettings(
     val fallbackSeconds: Int = 20,
     val volumePercent: Int = 70,
     val radioBrowserHost: String = "https://de1.api.radio-browser.info",
-    val shuffle: Boolean = true
+    val shuffle: Boolean = true,
+    val sonaraPlaylistId: String = "",
+    val sonaraPlaylistTitle: String = ""
 ) {
     fun needsNetwork(): Boolean = kind == MusicKind.SPOTIFY || kind == MusicKind.STREAM
 
     fun summary(): String = when (kind) {
         MusicKind.SPOTIFY -> SpotifyLink.parse(spotifyInput)?.let { "Spotify" } ?: "Spotify-Link fehlt"
         MusicKind.STREAM -> streamTitle.ifBlank { streamUrl.ifBlank { "Stream fehlt" } }
-        MusicKind.APP -> appLabel.ifBlank { appPackage.ifBlank { "App fehlt" } }
+        MusicKind.APP -> {
+            val app = appLabel.ifBlank { appPackage.ifBlank { "App fehlt" } }
+            val playlist = sonaraPlaylistTitle.trim()
+            if (appPackage == SonaraShuffle.PACKAGE && sonaraPlaylistId.isNotBlank() && playlist.isNotEmpty()) {
+                "$app · $playlist"
+            } else {
+                app
+            }
+        }
     }
 }
 

@@ -11,7 +11,10 @@ import androidx.compose.material.icons.outlined.Alarm
 import androidx.compose.material.icons.outlined.MusicNote
 import androidx.compose.material.icons.outlined.Notifications
 import androidx.compose.material3.Button
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -33,6 +36,9 @@ import io.qzz.xandll.morgo.domain.model.ExtraAlarm
 import io.qzz.xandll.morgo.domain.model.ExtraAlarmPlan
 import io.qzz.xandll.morgo.domain.model.Lesson
 import io.qzz.xandll.morgo.domain.model.MusicKind
+import io.qzz.xandll.morgo.domain.model.SonaraCatalog
+import io.qzz.xandll.morgo.domain.model.SonaraPlaylist
+import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import io.qzz.xandll.morgo.domain.model.SpotifyLink
 import io.qzz.xandll.morgo.domain.model.WakeSound
 import java.time.LocalDate
@@ -50,7 +56,8 @@ fun WakeSoundCard(
     onSearchRadio: (String) -> Unit,
     onPickApp: () -> Unit,
     onTest: () -> Unit,
-    initialRadioQuery: String = ""
+    initialRadioQuery: String = "",
+    sonaraPlaylists: List<SonaraPlaylist> = emptyList()
 ) {
     var radioQuery by rememberSaveable { mutableStateOf(initialRadioQuery) }
     val music = alarm.music
@@ -165,6 +172,23 @@ fun WakeSoundCard(
                         if (music.appLabel.isNotBlank()) {
                             Text("Gewählt: ${music.appLabel}", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
+                        if (music.appPackage == SonaraShuffle.PACKAGE) {
+                            SonaraPlaylistField(
+                                selectedId = music.sonaraPlaylistId,
+                                selectedTitle = music.sonaraPlaylistTitle,
+                                browsed = sonaraPlaylists,
+                                onSelect = { playlist ->
+                                    onChange(
+                                        alarm.copy(
+                                            music = music.copy(
+                                                sonaraPlaylistId = playlist.id,
+                                                sonaraPlaylistTitle = playlist.title
+                                            )
+                                        )
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
                 if (music.kind != MusicKind.STREAM) {
@@ -209,6 +233,46 @@ fun WakeSoundCard(
             }
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun SonaraPlaylistField(
+    selectedId: String,
+    selectedTitle: String,
+    browsed: List<SonaraPlaylist>,
+    onSelect: (SonaraPlaylist) -> Unit
+) {
+    val choices = SonaraCatalog.choices(browsed, selectedId, selectedTitle)
+    val shown = choices.firstOrNull { it.id == selectedId.trim() }?.title ?: SonaraShuffle.FAVORITES
+    var open by rememberSaveable { mutableStateOf(false) }
+    ExposedDropdownMenuBox(expanded = open, onExpandedChange = { open = it }) {
+        OutlinedTextField(
+            value = shown,
+            onValueChange = {},
+            readOnly = true,
+            label = { Text("Playlist") },
+            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = open) },
+            modifier = Modifier.menuAnchor().fillMaxWidth(),
+            singleLine = true
+        )
+        ExposedDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            choices.forEach { playlist ->
+                DropdownMenuItem(
+                    text = { Text(playlist.title) },
+                    onClick = {
+                        onSelect(playlist)
+                        open = false
+                    }
+                )
+            }
+        }
+    }
+    Text(
+        "Ohne erreichbare Liste bleiben die Lieblingssongs. Gemischt spielt Sonara sie erst, wenn sie den Befehl anbietet.",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable

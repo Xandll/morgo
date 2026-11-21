@@ -6,6 +6,8 @@ import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.MusicShufflePlan
 import io.qzz.xandll.morgo.domain.model.ShuffleStyle
 import io.qzz.xandll.morgo.domain.model.ShuffleTarget
+import io.qzz.xandll.morgo.domain.model.SonaraCatalog
+import io.qzz.xandll.morgo.domain.model.SonaraPlaylist
 import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
@@ -37,11 +39,37 @@ class MusicShufflePlanTest {
         assertEquals(ShuffleStyle.SONARA, on?.style)
         assertEquals(SonaraShuffle.SERVICE, on?.serviceClasses?.single())
         assertEquals(on, off)
-        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(false, setOf(SonaraShuffle.SET_SHUFFLE)))
-        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(true, setOf("SHUFFLE")))
+        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(false, setOf(SonaraShuffle.PLAY_SHUFFLED)))
+        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(true, setOf("SHUFFLE", "SET_SHUFFLE")))
         assertEquals(
-            listOf(SonaraShuffle.Step.SET_SHUFFLE_ON, SonaraShuffle.Step.PLAY),
-            SonaraShuffle.steps(true, setOf("SHUFFLE", SonaraShuffle.SET_SHUFFLE))
+            listOf(SonaraShuffle.Step.PLAY_SHUFFLED),
+            SonaraShuffle.steps(true, setOf("SHUFFLE", SonaraShuffle.PLAY_SHUFFLED))
+        )
+        assertNull(SonaraShuffle.playlistArgument("  "))
+        assertEquals("morgen", SonaraShuffle.playlistArgument(" morgen "))
+        assertEquals(
+            listOf(SonaraPlaylist("", SonaraShuffle.FAVORITES)),
+            SonaraCatalog.choices(emptyList())
+        )
+        assertEquals(
+            listOf(SonaraPlaylist("", SonaraShuffle.FAVORITES), SonaraPlaylist("a", "Morgen")),
+            SonaraCatalog.choices(
+                listOf(SonaraPlaylist("a", "Morgen"), SonaraPlaylist(" ", "leer"), SonaraPlaylist("a", "doppelt"))
+            )
+        )
+        assertEquals(
+            listOf(SonaraPlaylist("", SonaraShuffle.FAVORITES), SonaraPlaylist("weg", "Morgen")),
+            SonaraCatalog.choices(emptyList(), "weg", "Morgen")
+        )
+        assertEquals(
+            "Sonara · Morgen",
+            MusicAlarmSettings(
+                kind = MusicKind.APP,
+                appPackage = SonaraShuffle.PACKAGE,
+                appLabel = "Sonara",
+                sonaraPlaylistId = "a",
+                sonaraPlaylistTitle = "Morgen"
+            ).summary()
         )
     }
 

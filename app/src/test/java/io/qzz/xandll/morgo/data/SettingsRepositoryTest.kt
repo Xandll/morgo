@@ -97,6 +97,24 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `sonara playlist stays empty until one is saved`() {
+        val regular = MemoryPrefs()
+        val repository = SettingsRepository.forPrefs(regular, MemoryPrefs())
+        assertEquals("", repository.loadSettings().alarm.music.sonaraPlaylistId)
+        val saved = repository.loadSettings().let { settings ->
+            settings.copy(
+                alarm = settings.alarm.copy(
+                    music = settings.alarm.music.copy(sonaraPlaylistId = "pl-1", sonaraPlaylistTitle = "Morgen")
+                )
+            )
+        }
+        repository.saveSettings(saved)
+        val loaded = SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings().alarm.music
+        assertEquals("pl-1", loaded.sonaraPlaylistId)
+        assertEquals("Morgen", loaded.sonaraPlaylistTitle)
+    }
+
+    @Test
     fun `a custom radio host is kept`() {
         val regular = MemoryPrefs()
         regular.edit().putString("radio_browser_host", "https://radio.example").apply()

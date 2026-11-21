@@ -42,7 +42,7 @@ object MusicShuffle {
         val app = context.applicationContext
         if (target.style == ShuffleStyle.SONARA) {
             Handler(Looper.getMainLooper()).post {
-                runCatching { connectSonara(app, music.shuffle) }.onFailure { log("Sonara") }
+                runCatching { connectSonara(app, music) }.onFailure { log("Sonara") }
             }
             return
         }
@@ -53,7 +53,7 @@ object MusicShuffle {
         }
     }
 
-    private fun connectSonara(context: Context, shuffle: Boolean) {
+    private fun connectSonara(context: Context, music: MusicAlarmSettings) {
         sonaraController?.runCatching { release() }
         sonaraController = null
         val token = SessionToken(
@@ -67,21 +67,27 @@ object MusicShuffle {
                 return@addListener
             }
             sonaraController = controller
-            driveSonara(controller, shuffle)
+            driveSonara(controller, music)
         }, ContextCompat.getMainExecutor(context))
     }
 
-    private fun driveSonara(controller: SessionController, shuffle: Boolean) {
+    private fun driveSonara(controller: SessionController, music: MusicAlarmSettings) {
         val names = controller.availableSessionCommands.commands
             .filter { it.commandCode == SessionCommand.COMMAND_CODE_CUSTOM }
             .map { it.customAction }
             .toSet()
-        SonaraShuffle.steps(shuffle, names).forEach { step ->
+        SonaraShuffle.steps(music.shuffle, names).forEach { step ->
             runCatching {
                 when (step) {
-                    SonaraShuffle.Step.SET_SHUFFLE_ON -> {
-                        val args = Bundle().apply { putBoolean(SonaraShuffle.ENABLED, true) }
-                        controller.sendCustomCommand(SessionCommand(SonaraShuffle.SET_SHUFFLE, Bundle()), args)
+                    SonaraShuffle.Step.PLAY_SHUFFLED -> {
+                        val args = Bundle()
+                        SonaraShuffle.playlistArgument(music.sonaraPlaylistId)?.let { id ->
+                            args.putString(SonaraShuffle.PLAYLIST_ID, id)
+                        }
+                        controller.sendCustomCommand(
+                            SessionCommand(SonaraShuffle.PLAY_SHUFFLED, Bundle()),
+                            args
+                        )
                     }
                     SonaraShuffle.Step.PLAY -> controller.play()
                 }

@@ -78,6 +78,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
 import io.qzz.xandll.morgo.data.service.MusicShuffle
+import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import io.qzz.xandll.morgo.data.service.WakeMusic
 import io.qzz.xandll.morgo.data.service.WakeSoundService
 import io.qzz.xandll.morgo.domain.model.AlarmSettings
@@ -161,6 +162,10 @@ fun SettingsScreen(
         if (tab == 2) viewModel.loadHomeAssistantEntities()
     }
 
+    LaunchedEffect(settings.alarm.music.appPackage) {
+        if (settings.alarm.music.appPackage == SonaraShuffle.PACKAGE) viewModel.refreshSonaraPlaylists()
+    }
+
     LaunchedEffect(
         webUntis.server,
         webUntis.schoolName,
@@ -215,6 +220,7 @@ fun SettingsScreen(
         onTestLight = { viewModel.testPreWakeLight() },
         onTestLeaveLight = { viewModel.testLeaveLight() },
         radioResults = viewModel.radioStations.collectAsState().value,
+        sonaraPlaylists = viewModel.sonaraPlaylists.collectAsState().value,
         onSearchRadio = { viewModel.searchRadio(it) },
         onPickApp = { pickApp.launch(WakeMusic.pickIntent(settings.alarm.music.searchQuery)) },
         onTestSound = {
@@ -328,6 +334,7 @@ fun SettingsBody(
     showTopBar: Boolean = true,
     onTestLight: () -> Unit = {},
     radioResults: List<io.qzz.xandll.morgo.data.datasource.RadioStation> = emptyList(),
+    sonaraPlaylists: List<io.qzz.xandll.morgo.domain.model.SonaraPlaylist> = emptyList(),
     onSearchRadio: (String) -> Unit = {},
     onPickApp: () -> Unit = {},
     onTestSound: () -> Unit = {},
@@ -390,7 +397,7 @@ fun SettingsBody(
                         when (page) {
                             0 -> AlarmTab(
                                 settings.alarm, onAlarm, lessonSlots, lessonStatus, lessonDetail, onWakeRule,
-                                radioResults, onSearchRadio, onPickApp, onTestSound, subjects, onLoadSubjects,
+                                radioResults, sonaraPlaylists, onSearchRadio, onPickApp, onTestSound, subjects, onLoadSubjects,
                                 cachedLessons
                             )
                             1 -> TrainSettings(settings.train, onTrain, onSearchStations, stationResults, stationLoading, stationError, onTestTrain, testingTrain)
@@ -436,6 +443,7 @@ private fun AlarmTab(
     detail: String?,
     onWakeRule: (WakeTimeRule) -> Unit,
     radioResults: List<io.qzz.xandll.morgo.data.datasource.RadioStation>,
+    sonaraPlaylists: List<io.qzz.xandll.morgo.domain.model.SonaraPlaylist>,
     onSearchRadio: (String) -> Unit,
     onPickApp: () -> Unit,
     onTestSound: () -> Unit,
@@ -445,7 +453,10 @@ private fun AlarmTab(
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         AlarmSettings(settings, onUpdate)
-        WakeSoundCard(settings, onUpdate, radioResults, onSearchRadio, onPickApp, onTestSound)
+        WakeSoundCard(
+            settings, onUpdate, radioResults, onSearchRadio, onPickApp, onTestSound,
+            sonaraPlaylists = sonaraPlaylists
+        )
         FollowUpCard(settings, onUpdate)
         WakeTimeRulesSection(settings.wakeTimeRules, slots, status, detail, onWakeRule)
         ExtraAlarmsCard(settings, subjects, onUpdate, onLoadSubjects, lessons = lessons)

@@ -23,6 +23,7 @@ import io.qzz.xandll.morgo.domain.model.WakeTimeRule
 import io.qzz.xandll.morgo.data.datasource.HomeAssistantClient
 import io.qzz.xandll.morgo.data.datasource.RadioBrowserClient
 import io.qzz.xandll.morgo.data.datasource.RadioStation
+import io.qzz.xandll.morgo.data.service.SonaraLibrary
 import io.qzz.xandll.morgo.data.service.WakeSoundService
 import io.qzz.xandll.morgo.data.service.WakeSoundStatus
 import io.qzz.xandll.morgo.data.update.UpdateCheckResult
@@ -30,6 +31,7 @@ import io.qzz.xandll.morgo.data.update.UpdateCoordinator
 import io.qzz.xandll.morgo.data.update.UpdateScheduler
 import io.qzz.xandll.morgo.BuildConfig
 import io.qzz.xandll.morgo.domain.model.LessonStatus
+import io.qzz.xandll.morgo.domain.model.SonaraPlaylist
 import io.qzz.xandll.morgo.util.ConnectionErrors
 import io.qzz.xandll.morgo.util.ErrorDetails
 import io.qzz.xandll.morgo.util.WebUntisStatusText
@@ -214,6 +216,9 @@ class SettingsViewModel @Inject constructor(
     private val _radioStations = MutableStateFlow<List<RadioStation>>(emptyList())
     val radioStations: StateFlow<List<RadioStation>> = _radioStations.asStateFlow()
 
+    private val _sonaraPlaylists = MutableStateFlow<List<SonaraPlaylist>>(emptyList())
+    val sonaraPlaylists: StateFlow<List<SonaraPlaylist>> = _sonaraPlaylists.asStateFlow()
+
     private val _radioError = MutableStateFlow<String?>(null)
     val radioError: StateFlow<String?> = _radioError.asStateFlow()
 
@@ -250,6 +255,10 @@ class SettingsViewModel @Inject constructor(
 
     fun clearRadioError() {
         _radioError.value = null
+    }
+
+    fun refreshSonaraPlaylists() {
+        SonaraLibrary.load(context) { found -> _sonaraPlaylists.value = found }
     }
 
     fun refreshCachedTimetable(today: java.time.LocalDate = java.time.LocalDate.now()) {

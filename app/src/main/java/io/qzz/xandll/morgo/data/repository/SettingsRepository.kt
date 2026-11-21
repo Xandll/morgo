@@ -261,6 +261,8 @@ class SettingsRepository private constructor(
             putInt(KEY_MUSIC_FALLBACK, music.fallbackSeconds)
             putInt(KEY_MUSIC_VOLUME, music.volumePercent)
             putBoolean(KEY_MUSIC_SHUFFLE, music.shuffle)
+            putString(KEY_SONARA_PLAYLIST, music.sonaraPlaylistId)
+            putString(KEY_SONARA_PLAYLIST_TITLE, music.sonaraPlaylistTitle)
             putString(KEY_RADIO_HOST, music.radioBrowserHost)
             putString(KEY_EXTRA_ALARMS, ExtraAlarmCodec.encode(settings.alarm.extraAlarms))
             putBoolean(KEY_DYNAMIC_COLOR, settings.useDynamicColor)
@@ -304,7 +306,9 @@ class SettingsRepository private constructor(
             fallbackSeconds = regularPrefs.getInt(KEY_MUSIC_FALLBACK, 20),
             volumePercent = regularPrefs.getInt(KEY_MUSIC_VOLUME, 70),
             radioBrowserHost = migratedRadioHost(),
-            shuffle = regularPrefs.getBoolean(KEY_MUSIC_SHUFFLE, true)
+            shuffle = regularPrefs.getBoolean(KEY_MUSIC_SHUFFLE, true),
+            sonaraPlaylistId = regularPrefs.getString(KEY_SONARA_PLAYLIST, "") ?: "",
+            sonaraPlaylistTitle = regularPrefs.getString(KEY_SONARA_PLAYLIST_TITLE, "") ?: ""
         )
     }
 
@@ -458,6 +462,8 @@ class SettingsRepository private constructor(
         private const val KEY_MUSIC_FALLBACK = "music_fallback_seconds"
         private const val KEY_MUSIC_VOLUME = "music_volume_percent"
         private const val KEY_MUSIC_SHUFFLE = "music_shuffle"
+        private const val KEY_SONARA_PLAYLIST = "sonara_playlist_id"
+        private const val KEY_SONARA_PLAYLIST_TITLE = "sonara_playlist_title"
         private const val KEY_RADIO_HOST = "radio_browser_host"
         private const val KEY_EXTRA_ALARMS = "extra_alarms"
         private const val KEY_OVERRIDE_DATE = "day_override_date"
