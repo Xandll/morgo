@@ -44,23 +44,6 @@ class GithubReleaseClient @Inject constructor() {
         }
     }
 
-    suspend fun fetchText(url: String): Result<String> {
-        if (!url.startsWith("https://")) {
-            return Result.failure(IllegalArgumentException("Nur https-Adressen"))
-        }
-        return runCatching {
-            val response = http.get(url) {
-                header(HttpHeaders.UserAgent, "Morgo/${BuildConfig.VERSION_NAME}")
-            }
-            if (response.status != HttpStatusCode.OK) {
-                throw IllegalStateException("Prüfsumme nicht geladen")
-            }
-            val text = response.bodyAsText()
-            if (text.length > 4096) throw IllegalStateException("Prüfsumme unlesbar")
-            text
-        }
-    }
-
     companion object {
         private val SLUG = Regex("[A-Za-z0-9_.-]{1,100}")
     }

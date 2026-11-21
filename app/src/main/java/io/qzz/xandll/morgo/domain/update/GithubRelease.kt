@@ -22,6 +22,17 @@ data class UpdateOffer(
     val dismissed: Boolean = false
 )
 
+object ReleasePage {
+    private val name = Regex("[A-Za-z0-9_.-]{1,64}")
+    private val tag = Regex("v?[0-9A-Za-z._-]{1,40}")
+
+    /** Nur eine GitHub-Release-Seite. Kein Download, keine fremde Adresse. */
+    fun url(owner: String, repo: String, releaseTag: String): String? {
+        if (!name.matches(owner) || !name.matches(repo) || !tag.matches(releaseTag)) return null
+        return "https://github.com/$owner/$repo/releases/tag/$releaseTag"
+    }
+}
+
 object ReleaseVersion {
     /** Tag vX.Y.Z ist neuer als die installierte versionName. */
     fun isNewer(tag: String, current: String): Boolean {

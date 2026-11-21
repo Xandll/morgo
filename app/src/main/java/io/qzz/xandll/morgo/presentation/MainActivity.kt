@@ -47,18 +47,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             val settings by settingsRepository.settingsFlow.collectAsState()
             val offer by settingsRepository.updateOffer.collectAsState()
-            val installStatus by updateInstaller.status.collectAsState()
             MorgoTheme(dynamicColor = settings.useDynamicColor) {
                 CrashReportDialog(this)
                 val visibleOffer = offer?.takeIf { settings.update.enabled && !it.dismissed }
                 if (visibleOffer != null) {
                     UpdateDialog(
                         offer = visibleOffer,
-                        canInstall = updateInstaller.canInstallPackages(),
-                        status = installStatus,
                         onLater = { settingsRepository.dismissUpdateOffer() },
-                        onInstall = { updateInstaller.enqueue(visibleOffer) },
-                        onAllowUnknown = { startActivity(updateInstaller.unknownSourcesIntent()) }
+                        onOpenRelease = {
+                            updateInstaller.releaseIntent(visibleOffer)?.let { startActivity(it) }
+                        }
                     )
                 }
                 MainScreen(

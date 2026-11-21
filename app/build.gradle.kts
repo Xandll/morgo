@@ -19,8 +19,8 @@ android {
         applicationId = "io.qzz.xandll.morgo"
         minSdk = 29
         targetSdk = 35
-        versionCode = 16
-        versionName = "1.6.4"
+        versionCode = 17
+        versionName = "1.6.5"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

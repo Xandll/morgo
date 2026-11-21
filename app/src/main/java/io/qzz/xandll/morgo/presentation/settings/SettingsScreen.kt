@@ -516,7 +516,7 @@ private fun AppearanceCard(
                 Text(if (updateBusy) "Suche …" else "Nach Updates suchen")
             }
             Text(
-                "Die Installation braucht einmal die Freigabe „Unbekannte Apps“, nur für Morgo.",
+                "Ein neues Release öffnet nur die GitHub-Seite. Morgo installiert die APK nicht selbst.",
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )

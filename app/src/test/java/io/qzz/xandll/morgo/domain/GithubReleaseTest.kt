@@ -2,6 +2,7 @@ package io.qzz.xandll.morgo.domain
 
 import io.qzz.xandll.morgo.domain.update.ApkTrust
 import io.qzz.xandll.morgo.domain.update.GithubReleaseJson
+import io.qzz.xandll.morgo.domain.update.ReleasePage
 import io.qzz.xandll.morgo.domain.update.ReleaseVersion
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -41,6 +42,17 @@ class GithubReleaseTest {
         assertEquals("morgo-release.apk", release.apkName)
         assertTrue(release.apkUrl.endsWith("morgo-release.apk"))
         assertEquals("https://github.com/Xandll/morgo/releases/download/v1.7.0/morgo-release.apk.sha256", release.sha256Url)
+    }
+
+    @Test
+    fun `release page stays on github and rejects other addresses`() {
+        assertEquals(
+            "https://github.com/Xandll/morgo/releases/tag/v1.6.5",
+            ReleasePage.url("Xandll", "morgo", "v1.6.5")
+        )
+        assertNull(ReleasePage.url("Xandll", "morgo", "https://evil.example/apk"))
+        assertNull(ReleasePage.url("../Xandll", "morgo", "v1"))
+        assertNull(ReleasePage.url("Xandll", "morgo/../other", "v1"))
     }
 
     @Test

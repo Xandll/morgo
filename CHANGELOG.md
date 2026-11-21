@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.6.5
+
+- Updates öffnen nur noch die GitHub-Release-Seite. Morgo lädt keine APK mehr und fordert die Installationsfreigabe nicht mehr an.
+- Die Kamera für den WebUntis-QR-Code bleibt eine optionale Gerätefunktion. Der Scanner ist nicht exportiert.
+
 ## 1.6.4
 
 - Die Einstellungen öffnen wieder. Der Stundenplan für die Extra-Wecker wurde gelesen, bevor sein Zustand angelegt war, und das hat die App sofort beendet. Fehlende neue Werte (Zufallswiedergabe, Sonara-Playlist, Licht beim Losgehen) bleiben bei den bisherigen Vorgaben. Ohne gespeicherten Stundenplan steht „Keine Stunden gefunden“.
