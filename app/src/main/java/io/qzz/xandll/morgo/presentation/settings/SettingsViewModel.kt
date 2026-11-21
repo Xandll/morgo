@@ -98,6 +98,7 @@ class SettingsViewModel @Inject constructor(
     val schoolSearchResults: StateFlow<List<io.qzz.xandll.morgo.data.model.WebUntisSchool>> = _schoolSearchResults.asStateFlow()
     
     init {
+        refreshCachedTimetable()
         // Debounced station search, ab 2 Zeichen
         viewModelScope.launch {
             _stationSearchQuery
@@ -219,6 +220,9 @@ class SettingsViewModel @Inject constructor(
     private val _subjects = MutableStateFlow<List<String>>(emptyList())
     val subjects: StateFlow<List<String>> = _subjects.asStateFlow()
 
+    private val _cachedLessons = MutableStateFlow<List<io.qzz.xandll.morgo.domain.model.Lesson>>(emptyList())
+    val cachedLessons: StateFlow<List<io.qzz.xandll.morgo.domain.model.Lesson>> = _cachedLessons.asStateFlow()
+
     val wakeSoundFailure = wakeSoundStatus.failure
 
     fun testWakeSound() {
@@ -248,11 +252,23 @@ class SettingsViewModel @Inject constructor(
         _radioError.value = null
     }
 
+    fun refreshCachedTimetable(today: java.time.LocalDate = java.time.LocalDate.now()) {
+        _cachedLessons.value = repository.readLessonCacheWindow(today, io.qzz.xandll.morgo.domain.model.ExtraAlarmPlan.HORIZON_DAYS)
+    }
+
     fun loadSubjects() {
         viewModelScope.launch {
             val settings = _settings.value.webUntis
             val start = java.time.LocalDate.now()
-            val lessons = repository.getTimetable(settings, start, start.plusDays(13)).getOrElse { emptyList() }
+            val end = start.plusDays((io.qzz.xandll.morgo.domain.model.ExtraAlarmPlan.HORIZON_DAYS - 1).toLong())
+            val loaded = repository.getTimetable(settings, start, end).getOrNull()
+            if (loaded != null) {
+                repository.saveLessonCacheRange(start, end, loaded)
+                _cachedLessons.value = loaded
+            } else {
+                refreshCachedTimetable(start)
+            }
+            val lessons = loaded ?: _cachedLessons.value
             _subjects.value = lessons
                 .filter { it.status != LessonStatus.CANCELLED }
                 .map { it.subject.trim() }

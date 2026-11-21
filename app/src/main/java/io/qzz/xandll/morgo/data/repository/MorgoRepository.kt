@@ -52,7 +52,15 @@ class MorgoRepository(
         lessonCache?.save(date, lessons)
     }
 
+    fun saveLessonCacheRange(from: LocalDate, until: LocalDate, lessons: List<Lesson>) {
+        lessonCache?.saveRange(from, until, lessons)
+    }
+
     fun readLessonCache(date: LocalDate): List<Lesson>? = lessonCache?.read(date)
+
+    fun readLessonCacheWindow(from: LocalDate, days: Int): List<Lesson> {
+        return lessonCache?.readWindow(from, days).orEmpty()
+    }
 
     private suspend fun <T> withSession(
         settings: WebUntisSettings,

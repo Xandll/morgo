@@ -67,8 +67,29 @@ object FollowUpPlan {
     fun cancelWhenConfirmedAwake(alarm: AlarmSettings): Boolean = !alarm.followUpEvenIfAwake
 }
 
+/** Was der gespeicherte Stundenplan zu einem Fach sagt. Kein Netz. */
+data class SubjectSchedule(
+    val weekdays: String,
+    val nextLine: String?,
+    val upcoming: List<String>,
+    val missing: Boolean
+) {
+    fun headline(): String? = when {
+        missing -> "Keine Stunden gefunden"
+        weekdays.isEmpty() -> null
+        else -> listOfNotNull(weekdays, nextLine).joinToString(" · ")
+    }
+
+    companion object {
+        val NONE = SubjectSchedule("", null, emptyList(), missing = false)
+        val EMPTY = SubjectSchedule("", null, emptyList(), missing = true)
+    }
+}
+
 object ExtraAlarmPlan {
+    const val HORIZON_DAYS = 14
     private val clock: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    private val day: DateTimeFormatter = DateTimeFormatter.ofPattern("dd.MM.")
 
     fun normalize(subject: String): String {
         return subject.trim().replace(Regex("\\s+"), " ").lowercase()
@@ -104,6 +125,40 @@ object ExtraAlarmPlan {
     }
 
     private fun DueExtra.label(): String = alarm.label.trim()
+
+    /**
+     * Stunden des Fachs ab `today` für die nächsten zwei Wochen.
+     * Ausgefallene Stunden zählen nicht. Ein leeres Fach liefert keine Anzeige.
+     */
+    fun schedule(
+        subject: String,
+        lessons: List<Lesson>,
+        today: LocalDate,
+        horizonDays: Int = HORIZON_DAYS
+    ): SubjectSchedule {
+        if (subject.isBlank()) return SubjectSchedule.NONE
+        val until = today.plusDays(horizonDays.coerceAtLeast(1) - 1L)
+        val hits = lessons
+            .asSequence()
+            .filter { !it.date.isBefore(today) && !it.date.isAfter(until) }
+            .filter { it.status != LessonStatus.CANCELLED }
+            .filter { matches(it.subject, subject) }
+            .sortedWith(compareBy({ it.date }, { it.startTime }))
+            .distinctBy { it.date to it.startTime }
+            .toList()
+        if (hits.isEmpty()) return SubjectSchedule.EMPTY
+        val weekdays = hits
+            .map { it.date.dayOfWeek }
+            .distinct()
+            .sortedBy { it.value }
+            .joinToString(", ") { LessonGrid.dayLabel(it) }
+        val lines = hits.map { formatWhen(it.date, it.startTime) }
+        return SubjectSchedule(weekdays, "nächster: ${lines.first()}", lines, missing = false)
+    }
+
+    fun formatWhen(date: LocalDate, time: LocalTime): String {
+        return "${LessonGrid.dayLabel(date.dayOfWeek)} ${date.format(day)} ${time.format(clock)}"
+    }
 }
 
 object SpotifyLink {

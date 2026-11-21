@@ -12,6 +12,8 @@ import com.android.ide.common.rendering.api.SessionParams
 import io.qzz.xandll.morgo.data.datasource.RadioStation
 import io.qzz.xandll.morgo.domain.model.AlarmSettings
 import io.qzz.xandll.morgo.domain.model.ExtraAlarm
+import io.qzz.xandll.morgo.domain.model.Lesson
+import io.qzz.xandll.morgo.domain.model.LessonStatus
 import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.WakeSound
@@ -23,6 +25,7 @@ import io.qzz.xandll.morgo.presentation.settings.LessonGridStatus
 import io.qzz.xandll.morgo.presentation.settings.WakeSoundCard
 import io.qzz.xandll.morgo.presentation.settings.WakeTimeRulesSection
 import java.time.DayOfWeek
+import java.time.LocalDate
 import java.time.LocalTime
 import io.qzz.xandll.morgo.presentation.theme.MorgoTheme
 import org.junit.Rule
@@ -124,14 +127,23 @@ class WakeOptionsScreenshotTest {
 
     @Composable
     private fun ExtraSample() {
+        val today = LocalDate.of(2026, 11, 25)
         ExtraAlarmsCard(
             alarm = AlarmSettings(
-                extraAlarms = listOf(ExtraAlarm("1", "Turnzeug einpacken", "Turnen", 15, true))
+                extraAlarms = listOf(
+                    ExtraAlarm("1", "Turnzeug einpacken", "Turnen", 15, true),
+                    ExtraAlarm("2", "Geodreieck", "Latein", 20, false)
+                )
             ),
             subjects = listOf("Deutsch", "Turnen"),
             onChange = {},
             onLoadSubjects = {},
-            expanded = true
+            lessons = listOf(
+                Lesson(LocalDate.of(2026, 11, 23), LocalTime.of(7, 45), LocalTime.of(8, 35), "Turnen", "", "", LessonStatus.REGULAR),
+                Lesson(today.plusDays(1), LocalTime.of(7, 45), LocalTime.of(8, 35), "Turnen", "", "", LessonStatus.REGULAR),
+                Lesson(LocalDate.of(2026, 11, 30), LocalTime.of(7, 45), LocalTime.of(8, 35), "Turnen", "", "", LessonStatus.REGULAR)
+            ),
+            today = today
         )
     }
 }

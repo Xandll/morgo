@@ -30,9 +30,12 @@ import androidx.compose.ui.unit.dp
 import io.qzz.xandll.morgo.data.datasource.RadioStation
 import io.qzz.xandll.morgo.domain.model.AlarmSettings
 import io.qzz.xandll.morgo.domain.model.ExtraAlarm
+import io.qzz.xandll.morgo.domain.model.ExtraAlarmPlan
+import io.qzz.xandll.morgo.domain.model.Lesson
 import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.SpotifyLink
 import io.qzz.xandll.morgo.domain.model.WakeSound
+import java.time.LocalDate
 import io.qzz.xandll.morgo.presentation.ui.IconBadge
 import io.qzz.xandll.morgo.presentation.ui.SoftCard
 import io.qzz.xandll.morgo.presentation.ui.StepperRow
@@ -249,7 +252,9 @@ fun ExtraAlarmsCard(
     subjects: List<String>,
     onChange: (AlarmSettings) -> Unit,
     onLoadSubjects: () -> Unit,
-    expanded: Boolean = false
+    expanded: Boolean = false,
+    lessons: List<Lesson> = emptyList(),
+    today: LocalDate = LocalDate.now()
 ) {
     var query by rememberSaveable { mutableStateOf("") }
     var editing by rememberSaveable { mutableStateOf(if (expanded) alarm.extraAlarms.firstOrNull()?.id else null) }
@@ -268,7 +273,7 @@ fun ExtraAlarmsCard(
                 }
             }
             alarm.extraAlarms.forEach { extra ->
-                ExtraRow(extra, editing == extra.id, shown, query, { query = it }, onLoadSubjects) { updated ->
+                ExtraRow(extra, editing == extra.id, shown, query, { query = it }, onLoadSubjects, lessons, today) { updated ->
                     if (updated == null) {
                         onChange(alarm.copy(extraAlarms = alarm.extraAlarms.filter { it.id != extra.id }))
                         if (editing == extra.id) editing = null
@@ -309,13 +314,33 @@ private fun ExtraRow(
     query: String,
     onQuery: (String) -> Unit,
     onLoad: () -> Unit,
+    lessons: List<Lesson>,
+    today: LocalDate,
     onChange: (ExtraAlarm?) -> Unit
 ) {
+    val schedule = ExtraAlarmPlan.schedule(extra.subject, lessons, today)
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text(
             listOf(extra.label.ifBlank { "Ohne Namen" }, extra.subject.ifBlank { "kein Fach" }, "${extra.minutesAfterWake} Min.").joinToString(" · "),
             style = MaterialTheme.typography.titleMedium
         )
+        schedule.headline()?.let { headline ->
+            Text(
+                headline,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Medium
+            )
+        }
+        if (schedule.upcoming.size > 1) {
+            schedule.upcoming.forEach { line ->
+                Text(
+                    line,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+        }
         if (!open) return
         OutlinedTextField(extra.label, { onChange(extra.copy(label = it)) }, label = { Text("Text") }, placeholder = { Text("Turnzeug einpacken") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
         OutlinedTextField(query, onQuery, label = { Text("Fach suchen") }, modifier = Modifier.fillMaxWidth(), singleLine = true)

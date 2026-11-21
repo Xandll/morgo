@@ -83,6 +83,29 @@ class WakeOptionsTest {
     }
 
     @Test
+    fun extraAlarmShowsUpcomingLessonsFromTheCache() {
+        val today = LocalDate.of(2026, 11, 25)
+        val lessons = listOf(
+            lessonOn(LocalDate.of(2026, 11, 23), "Turnen", LocalTime.of(7, 45)),
+            lessonOn(LocalDate.of(2026, 11, 26), "Turnen", LocalTime.of(7, 45)),
+            lessonOn(LocalDate.of(2026, 11, 30), "Turnen", LocalTime.of(7, 45)),
+            lessonOn(LocalDate.of(2026, 12, 3), "Turnen", LocalTime.of(7, 45), LessonStatus.CANCELLED),
+            lessonOn(LocalDate.of(2026, 11, 26), "Mathe", LocalTime.of(9, 30)),
+            lessonOn(LocalDate.of(2026, 12, 10), "Turnen", LocalTime.of(7, 45))
+        )
+        val schedule = ExtraAlarmPlan.schedule(" turnen ", lessons, today)
+        assertEquals("Mo, Do", schedule.weekdays)
+        assertEquals("nächster: Do 26.11. 07:45", schedule.nextLine)
+        assertEquals(
+            listOf("Do 26.11. 07:45", "Mo 30.11. 07:45"),
+            schedule.upcoming
+        )
+        assertEquals("Mo, Do · nächster: Do 26.11. 07:45", schedule.headline())
+        assertEquals("Keine Stunden gefunden", ExtraAlarmPlan.schedule("Latein", lessons, today).headline())
+        assertNull(ExtraAlarmPlan.schedule("  ", lessons, today).headline())
+    }
+
+    @Test
     fun extraAlarmCodecRoundTrip() {
         val original = listOf(ExtraAlarm("a", "Turnzeug einpacken", "Turnen", 15, true))
         assertEquals(original, ExtraAlarmCodec.decode(ExtraAlarmCodec.encode(original)))
@@ -161,6 +184,21 @@ class WakeOptionsTest {
         )
     }
 }
+
+private fun lessonOn(
+    date: LocalDate,
+    subject: String,
+    start: LocalTime,
+    status: LessonStatus = LessonStatus.REGULAR
+) = Lesson(
+    date = date,
+    startTime = start,
+    endTime = start.plusMinutes(50),
+    subject = subject,
+    teacher = "",
+    room = "",
+    status = status
+)
 
 private fun lesson(subject: String, status: LessonStatus) = Lesson(
     date = LocalDate.of(2026, 11, 23),

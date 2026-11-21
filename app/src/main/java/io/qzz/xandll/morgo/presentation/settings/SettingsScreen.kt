@@ -135,6 +135,7 @@ fun SettingsScreen(
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
                 fullScreenMissing = io.qzz.xandll.morgo.data.service.FullScreenIntents.needsPermission(context)
+                viewModel.refreshCachedTimetable()
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -227,6 +228,7 @@ fun SettingsScreen(
             viewModel.testWakeSound()
         },
         subjects = viewModel.subjects.collectAsState().value,
+        cachedLessons = viewModel.cachedLessons.collectAsState().value,
         onLoadSubjects = { viewModel.loadSubjects() },
         onCheckUpdates = { viewModel.checkForUpdates() },
         updateBusy = updateBusy,
@@ -328,6 +330,7 @@ fun SettingsBody(
     onTestSound: () -> Unit = {},
     subjects: List<String> = emptyList(),
     onLoadSubjects: () -> Unit = {},
+    cachedLessons: List<io.qzz.xandll.morgo.domain.model.Lesson> = emptyList(),
     lightsLoading: Boolean = false,
     lightsMessage: String? = null,
     onCheckUpdates: () -> Unit = {},
@@ -384,7 +387,8 @@ fun SettingsBody(
                         when (page) {
                             0 -> AlarmTab(
                                 settings.alarm, onAlarm, lessonSlots, lessonStatus, lessonDetail, onWakeRule,
-                                radioResults, onSearchRadio, onPickApp, onTestSound, subjects, onLoadSubjects
+                                radioResults, onSearchRadio, onPickApp, onTestSound, subjects, onLoadSubjects,
+                                cachedLessons
                             )
                             1 -> TrainSettings(settings.train, onTrain, onSearchStations, stationResults, stationLoading, stationError, onTestTrain, testingTrain)
                             2 -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -433,14 +437,15 @@ private fun AlarmTab(
     onPickApp: () -> Unit,
     onTestSound: () -> Unit,
     subjects: List<String>,
-    onLoadSubjects: () -> Unit
+    onLoadSubjects: () -> Unit,
+    lessons: List<io.qzz.xandll.morgo.domain.model.Lesson> = emptyList()
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         AlarmSettings(settings, onUpdate)
         WakeSoundCard(settings, onUpdate, radioResults, onSearchRadio, onPickApp, onTestSound)
         FollowUpCard(settings, onUpdate)
         WakeTimeRulesSection(settings.wakeTimeRules, slots, status, detail, onWakeRule)
-        ExtraAlarmsCard(settings, subjects, onUpdate, onLoadSubjects)
+        ExtraAlarmsCard(settings, subjects, onUpdate, onLoadSubjects, lessons = lessons)
     }
 }
 
