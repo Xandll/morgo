@@ -4,7 +4,9 @@ import io.qzz.xandll.morgo.domain.model.AppShuffleHook
 import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.MusicShufflePlan
+import io.qzz.xandll.morgo.domain.model.ShuffleStyle
 import io.qzz.xandll.morgo.domain.model.ShuffleTarget
+import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -22,6 +24,25 @@ class MusicShufflePlanTest {
             )
         )
         assertNull(MusicShufflePlan.target(MusicAlarmSettings(kind = MusicKind.APP, appPackage = "  ")))
+    }
+
+    @Test
+    fun sonaraPlaysWithoutTogglingShuffle() {
+        val on = MusicShufflePlan.target(
+            MusicAlarmSettings(kind = MusicKind.APP, appPackage = SonaraShuffle.PACKAGE, shuffle = true)
+        )
+        val off = MusicShufflePlan.target(
+            MusicAlarmSettings(kind = MusicKind.APP, appPackage = SonaraShuffle.PACKAGE, shuffle = false)
+        )
+        assertEquals(ShuffleStyle.SONARA, on?.style)
+        assertEquals(SonaraShuffle.SERVICE, on?.serviceClasses?.single())
+        assertEquals(on, off)
+        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(false, setOf(SonaraShuffle.SET_SHUFFLE)))
+        assertEquals(listOf(SonaraShuffle.Step.PLAY), SonaraShuffle.steps(true, setOf("SHUFFLE")))
+        assertEquals(
+            listOf(SonaraShuffle.Step.SET_SHUFFLE_ON, SonaraShuffle.Step.PLAY),
+            SonaraShuffle.steps(true, setOf("SHUFFLE", SonaraShuffle.SET_SHUFFLE))
+        )
     }
 
     @Test

@@ -154,8 +154,9 @@ dependencies {
     // Coroutines
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.9.0")
 
-    // Stream-Wecker
+    // Stream-Wecker und Sonara-Session
     implementation("androidx.media3:media3-exoplayer:1.4.1")
+    implementation("androidx.media3:media3-session:1.4.1")
     
     // Testing
     testImplementation("junit:junit:4.13.2")

@@ -5,6 +5,7 @@
 - Der Radio-Stream im Musik-Wecker hält das WLAN wach und wartet die eingestellte Fallback-Zeit, auch wenn das Netz nach dem Wecken erst hochfährt. Eine stille Lautstärkerampe gilt nicht als Ausfall. Scheitert der Stream, stehen Fehlercode und Grund in der Benachrichtigung und beim Testen.
 - Extra-Wecker zeigen, an welchen Tagen das Fach im gespeicherten Stundenplan vorkommt: Wochentage, der nächste Termin und die Stunden der kommenden zwei Wochen. Fehlt das Fach, steht dort „Keine Stunden gefunden“.
 - Der Musik-Wecker bittet Spotify oder eine andere App beim Start um zufällige Wiedergabe. Der Schalter ist standardmäßig an. Klappt die Steuerung nicht, bleibt der Start wie bisher.
+- Sonara wird über den MediaController gestartet. Zufall wird nur gesetzt, wenn die App den Befehl SET_SHUFFLE anbietet. Ein blindes Umschalten gibt es nicht.
 
 ## 1.6.1
 

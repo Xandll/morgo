@@ -5,10 +5,19 @@ package io.qzz.xandll.morgo.domain.model
  * Eine App kann [MusicShufflePlan.register] nutzen und damit den generischen
  * MediaBrowser ersetzen, ohne dass der Wecker die App kennen muss.
  */
+enum class ShuffleStyle {
+    /** MediaBrowser, setShuffleMode und Deep-Links. */
+    GENERIC,
+
+    /** Sonara: MediaController.play(), Shuffle nur über SET_SHUFFLE. */
+    SONARA
+}
+
 data class ShuffleTarget(
     val packageName: String,
     val serviceClasses: List<String> = emptyList(),
-    val deepLinks: List<String> = emptyList()
+    val deepLinks: List<String> = emptyList(),
+    val style: ShuffleStyle = ShuffleStyle.GENERIC
 )
 
 fun interface AppShuffleHook {
@@ -31,7 +40,6 @@ object MusicShufflePlan {
     }
 
     fun target(music: MusicAlarmSettings): ShuffleTarget? {
-        if (!music.shuffle) return null
         val packageName = when (music.kind) {
             MusicKind.SPOTIFY -> SPOTIFY_PACKAGE
             MusicKind.APP -> music.appPackage.trim()
@@ -41,6 +49,8 @@ object MusicShufflePlan {
         hooks[packageName]?.target(music)?.let { specific ->
             if (specific.packageName.isNotBlank()) return specific
         }
+        if (packageName == SonaraShuffle.PACKAGE) return sonara()
+        if (!music.shuffle) return null
         return if (packageName == SPOTIFY_PACKAGE) spotify(music) else ShuffleTarget(packageName)
     }
 
@@ -54,6 +64,14 @@ object MusicShufflePlan {
         if (!raw.startsWith("spotify:")) return null
         if (raw.endsWith(":play")) return raw
         return "$raw:play"
+    }
+
+    private fun sonara(): ShuffleTarget {
+        return ShuffleTarget(
+            packageName = SonaraShuffle.PACKAGE,
+            serviceClasses = listOf(SonaraShuffle.SERVICE),
+            style = ShuffleStyle.SONARA
+        )
     }
 
     private fun spotify(music: MusicAlarmSettings): ShuffleTarget {

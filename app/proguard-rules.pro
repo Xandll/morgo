@@ -124,6 +124,7 @@
 -keep class androidx.media3.datasource.** { *; }
 -keep class androidx.media3.decoder.** { *; }
 -keep class androidx.media3.common.** { *; }
+-keep class androidx.media3.session.** { *; }
 -dontwarn androidx.media3.**
 
 # ZXing Barcode Scanning

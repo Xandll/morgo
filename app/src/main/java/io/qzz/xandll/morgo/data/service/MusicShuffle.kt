@@ -8,13 +8,20 @@ import android.content.pm.PackageManager
 import android.media.browse.MediaBrowser
 import android.media.session.MediaController
 import android.media.session.MediaSessionManager
+import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import androidx.core.content.ContextCompat
+import androidx.media3.session.MediaController as SessionController
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionToken
 import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicShufflePlan
+import io.qzz.xandll.morgo.domain.model.ShuffleStyle
 import io.qzz.xandll.morgo.domain.model.ShuffleTarget
+import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 
 /**
  * Bittet die bereits geöffnete Musik-App um Zufallswiedergabe.
@@ -28,14 +35,57 @@ object MusicShuffle {
     private const val ENABLED_LISTENERS = "enabled_notification_listeners"
 
     private var browser: MediaBrowser? = null
+    private var sonaraController: SessionController? = null
 
     fun request(context: Context, music: MusicAlarmSettings) {
         val target = MusicShufflePlan.target(music) ?: return
         val app = context.applicationContext
+        if (target.style == ShuffleStyle.SONARA) {
+            Handler(Looper.getMainLooper()).post {
+                runCatching { connectSonara(app, music.shuffle) }.onFailure { log("Sonara") }
+            }
+            return
+        }
         Handler(Looper.getMainLooper()).post {
             runCatching { connect(app, target) }.onFailure { log("MediaBrowser") }
             runCatching { activeSession(app, target) }.onFailure { log("Session") }
             runCatching { openDeepLinks(context, target) }.onFailure { log("Deep-Link") }
+        }
+    }
+
+    private fun connectSonara(context: Context, shuffle: Boolean) {
+        sonaraController?.runCatching { release() }
+        sonaraController = null
+        val token = SessionToken(
+            context,
+            ComponentName(SonaraShuffle.PACKAGE, SonaraShuffle.SERVICE)
+        )
+        val future = SessionController.Builder(context, token).buildAsync()
+        future.addListener({
+            val controller = runCatching { future.get() }.getOrElse {
+                log("Sonara")
+                return@addListener
+            }
+            sonaraController = controller
+            driveSonara(controller, shuffle)
+        }, ContextCompat.getMainExecutor(context))
+    }
+
+    private fun driveSonara(controller: SessionController, shuffle: Boolean) {
+        val names = controller.availableSessionCommands.commands
+            .filter { it.commandCode == SessionCommand.COMMAND_CODE_CUSTOM }
+            .map { it.customAction }
+            .toSet()
+        SonaraShuffle.steps(shuffle, names).forEach { step ->
+            runCatching {
+                when (step) {
+                    SonaraShuffle.Step.SET_SHUFFLE_ON -> {
+                        val args = Bundle().apply { putBoolean(SonaraShuffle.ENABLED, true) }
+                        controller.sendCustomCommand(SessionCommand(SonaraShuffle.SET_SHUFFLE, Bundle()), args)
+                    }
+                    SonaraShuffle.Step.PLAY -> controller.play()
+                }
+            }.onFailure { log("Sonara") }
         }
     }
 

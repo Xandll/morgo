@@ -26,6 +26,7 @@
             <action android:name="android.media.browse.MediaBrowserService" />
         </intent>
         <package android:name="com.spotify.music" />
+        <package android:name="app.sonara.mobile.native" />
     </queries>
 
     <uses-feature android:name="android.hardware.camera" android:required="false" />
