@@ -39,6 +39,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import io.qzz.xandll.morgo.data.service.FullScreenIntents
 import io.qzz.xandll.morgo.presentation.settings.AlarmSettings
 import io.qzz.xandll.morgo.presentation.settings.ConnectionTestTarget
 import io.qzz.xandll.morgo.presentation.settings.HomeAssistantSettings
@@ -182,6 +183,12 @@ private fun PermissionStep() {
         Button(onClick = {
             if (Build.VERSION.SDK_INT >= 33) notifications.launch(Manifest.permission.POST_NOTIFICATIONS)
         }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Benachrichtigungen erlauben") }
+        if (FullScreenIntents.needsPermission(context)) {
+            Text("Damit der Wecker bei gesperrtem Bildschirm als Vollbild erscheint.")
+            Button(onClick = {
+                context.startActivity(FullScreenIntents.settingsIntent(context))
+            }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Sperrbildschirm-Wecker erlauben") }
+        }
         Button(onClick = {
             context.startActivity(Intent(Settings.ACTION_IGNORE_BATTERY_OPTIMIZATION_SETTINGS))
         }, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("Akku-Einstellungen öffnen") }

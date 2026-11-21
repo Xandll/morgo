@@ -84,8 +84,12 @@ class MorgoScreenshotTest {
     @Test fun onboardingDark() = shot("onboarding-dark", true) { Welcome() }
     @Test fun onboardingPermissionsLight() = shot("onboarding-freigaben-light", false) { Permissions() }
 
-    @Test fun alarmLight() = shot("wecker-screen-light", false) { AlarmScreen(5, {}, {}) }
-    @Test fun alarmDark() = shot("wecker-screen-dark", true) { AlarmScreen(5, {}, {}) }
+    @Test fun alarmLight() = shot("wecker-screen-light", false) {
+        AlarmScreen(5, {}, {}, headline = "Weckruf", time = LocalTime.of(10, 35))
+    }
+    @Test fun alarmDark() = shot("wecker-screen-dark", true) {
+        AlarmScreen(5, {}, {}, headline = "Plan B", note = "Zug zu spät", time = LocalTime.of(5, 40))
+    }
 
     private fun shot(name: String, dark: Boolean, content: @Composable () -> Unit) {
         val tall = name.startsWith("abend")

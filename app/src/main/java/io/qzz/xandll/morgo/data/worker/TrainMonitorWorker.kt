@@ -76,7 +76,7 @@ class TrainMonitorWorker @AssistedInject constructor(
                 val newWakeTime = planBResult.newWakeTime
                 if (newWakeTime != null) {
                     val subjects = io.qzz.xandll.morgo.domain.model.ExtraAlarmPlan.activeSubjects(lessons, tomorrow)
-                    morningAlarmSync.move(tomorrow, newWakeTime, settings, subjects)
+                    morningAlarmSync.move(tomorrow, newWakeTime, settings, subjects, title = "Plan B")
                     val firstLesson = LessonGrid.firstLesson(lessons, tomorrow)
                     val lessonNumber = firstLesson?.let {
                         LessonGrid.lessonNumber(it.startTime, tomorrow.dayOfWeek, slots)

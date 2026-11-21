@@ -1,7 +1,6 @@
 package io.qzz.xandll.morgo.data.service
 
 import android.app.Notification
-import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
@@ -11,7 +10,7 @@ import android.media.RingtoneManager
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
 import android.os.IBinder
-import androidx.core.app.NotificationCompat
+import android.os.PowerManager
 import androidx.core.app.ServiceCompat
 import androidx.media3.common.AudioAttributes as PlayerAudio
 import androidx.media3.common.C
@@ -20,9 +19,11 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import dagger.hilt.android.AndroidEntryPoint
-import io.qzz.xandll.morgo.MorgoApplication
-import io.qzz.xandll.morgo.R
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
+import io.qzz.xandll.morgo.data.repository.MorgoRepository
+import io.qzz.xandll.morgo.domain.model.AlarmCommand
+import io.qzz.xandll.morgo.domain.model.AlarmFace
+import io.qzz.xandll.morgo.domain.model.HaServiceKind
 import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.WakeSound
@@ -42,8 +43,11 @@ class WakeSoundService : Service() {
 
     @Inject lateinit var settingsRepository: SettingsRepository
     @Inject lateinit var secondary: SecondaryAlarmScheduler
+    @Inject lateinit var alarms: AlarmSchedulerService
+    @Inject lateinit var repository: MorgoRepository
 
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+    private var wakeLock: PowerManager.WakeLock? = null
     private var job: Job? = null
     private var generation = 0
     private var player: ExoPlayer? = null
@@ -56,15 +60,27 @@ class WakeSoundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val action = intent?.action
         val kind = intent?.getStringExtra(SecondaryAlarmScheduler.EXTRA_KIND) ?: SecondaryAlarmScheduler.KIND_MAIN
-        if (action == ACTION_STOP || action == ACTION_AWAKE) {
-            if (action == ACTION_AWAKE && kind == SecondaryAlarmScheduler.KIND_MAIN) {
+        if (action == ACTION_STOP || action == ACTION_AWAKE || action == ACTION_SNOOZE) {
+            val effect = when (action) {
+                ACTION_SNOOZE -> AlarmFace.effect(AlarmCommand.SNOOZE)
+                ACTION_AWAKE -> AlarmFace.effect(AlarmCommand.STOP)
+                else -> null
+            }
+            if (effect?.confirmAwake == true && kind == SecondaryAlarmScheduler.KIND_MAIN) {
                 secondary.onAwakeConfirmed(settingsRepository.loadSettings().alarm)
             }
-            if (action == ACTION_AWAKE) {
+            if (effect?.snooze == true) {
+                val minutes = (intent?.getIntExtra(AlarmAlerts.EXTRA_SNOOZE_MINUTES, 0) ?: 0)
+                    .takeIf { it > 0 }
+                    ?: settingsRepository.loadSettings().alarm.snoozeMinutes
+                alarms.snoozeAlarm(minutes.coerceAtLeast(1))
+            }
+            if (effect?.closeScreen == true) {
                 sendBroadcast(Intent(ACTION_FINISH).setPackage(packageName))
             }
             externalFailed = false
             stopEverything()
+            releaseWakeLock()
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
             return START_NOT_STICKY
@@ -76,10 +92,13 @@ class WakeSoundService : Service() {
             externalFailed = false
         }
         val test = action == ACTION_TEST
+        val label = intent?.getStringExtra(SecondaryAlarmScheduler.EXTRA_LABEL).orEmpty()
+        acquireWakeLock()
+        if (action == null) runWakeActions(kind)
         ServiceCompat.startForeground(
             this,
-            NOTIFICATION_ID,
-            notification(if (test) "Test läuft" else "Wecker", test, kind),
+            AlarmAlerts.NOTIFICATION_ID,
+            notification(test, kind, label),
             android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
         )
         job?.cancel()
@@ -95,7 +114,33 @@ class WakeSoundService : Service() {
         job?.cancel()
         scope.cancel()
         stopEverything()
+        releaseWakeLock()
         super.onDestroy()
+    }
+
+    private fun runWakeActions(kind: String) {
+        if (kind != SecondaryAlarmScheduler.KIND_MAIN) return
+        val home = settingsRepository.loadSettings().homeAssistant
+        if (home.url.isBlank() || home.token.isBlank() || home.wakeUpActions.isEmpty()) return
+        scope.launch(Dispatchers.IO) {
+            home.wakeUpActions.forEach { entityId ->
+                repository.callHomeAssistant(home.url, home.token, entityId, HaServiceKind.TURN_ON)
+            }
+        }
+    }
+
+    private fun acquireWakeLock() {
+        if (wakeLock?.isHeld == true) return
+        val manager = getSystemService(PowerManager::class.java) ?: return
+        wakeLock = manager.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "morgo:alarm").apply {
+            setReferenceCounted(false)
+            acquire(10 * 60 * 1000L)
+        }
+    }
+
+    private fun releaseWakeLock() {
+        wakeLock?.runCatching { if (isHeld) release() }
+        wakeLock = null
     }
 
     private suspend fun play(kind: String, test: Boolean) {
@@ -227,41 +272,50 @@ class WakeSoundService : Service() {
 
     private fun notificationManagerNotify(text: String) {
         val manager = getSystemService(android.app.NotificationManager::class.java)
-        manager.notify(NOTIFICATION_ID, notification(text, test = false, kind = SecondaryAlarmScheduler.KIND_MAIN))
+        manager.notify(
+            AlarmAlerts.NOTIFICATION_ID,
+            notification(test = false, kind = SecondaryAlarmScheduler.KIND_MAIN, label = "", bodyOverride = text)
+        )
     }
 
-    private fun notification(text: String, test: Boolean, kind: String): Notification {
-        val actionIntent = Intent(this, WakeSoundService::class.java).apply {
-            action = if (test) ACTION_STOP else ACTION_AWAKE
-            putExtra(SecondaryAlarmScheduler.EXTRA_KIND, kind)
+    private fun notification(test: Boolean, kind: String, label: String, bodyOverride: String? = null): Notification {
+        val alarm = settingsRepository.loadSettings().alarm
+        val power = getSystemService(PowerManager::class.java)
+        val keyguard = getSystemService(android.app.KeyguardManager::class.java)
+        val clock = java.time.LocalTime.now().format(java.time.format.DateTimeFormatter.ofPattern("HH:mm"))
+        val spec = if (test) {
+            AlarmFace.alert(
+                kind, label, "Musik testen", snoozeMinutes = 0, withSound = true,
+                interactive = true, keyguardLocked = false, clock = "Test läuft"
+            ).copy(title = "Musik testen", fullScreen = false, showSnooze = false)
+        } else {
+            AlarmFace.alert(
+                kind = kind,
+                label = label,
+                storedTitle = settingsRepository.alarmTitle(),
+                snoozeMinutes = alarm.snoozeMinutes,
+                withSound = true,
+                interactive = power?.isInteractive == true,
+                keyguardLocked = keyguard?.isKeyguardLocked == true,
+                clock = clock
+            )
         }
-        val action = PendingIntent.getService(
-            this,
-            7,
-            actionIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-        return NotificationCompat.Builder(this, MorgoApplication.CHANNEL_ALARM)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle(if (test) "Musik testen" else "Morgo")
-            .setContentText(text)
-            .setOngoing(true)
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .addAction(0, if (test) "Stoppen" else "Ich bin wach", action)
-            .build()
+        val shown = if (bodyOverride != null) spec.copy(body = bodyOverride) else spec
+        return AlarmAlerts.notification(this, shown, kind, label, alarm.snoozeMinutes, test)
     }
 
     companion object {
-        private const val NOTIFICATION_ID = 44
         const val ACTION_TEST = "io.qzz.xandll.morgo.WAKE_SOUND_TEST"
         const val ACTION_STOP = "io.qzz.xandll.morgo.WAKE_SOUND_STOP"
         const val ACTION_AWAKE = "io.qzz.xandll.morgo.WAKE_SOUND_AWAKE"
+        const val ACTION_SNOOZE = "io.qzz.xandll.morgo.WAKE_SOUND_SNOOZE"
         const val ACTION_FINISH = "io.qzz.xandll.morgo.WAKE_SOUND_FINISH"
         const val ACTION_MUSIC_FAILED = "io.qzz.xandll.morgo.WAKE_SOUND_MUSIC_FAILED"
 
-        fun start(context: Context, kind: String) {
+        fun start(context: Context, kind: String, label: String = "") {
             val intent = Intent(context, WakeSoundService::class.java).apply {
                 putExtra(SecondaryAlarmScheduler.EXTRA_KIND, kind)
+                putExtra(SecondaryAlarmScheduler.EXTRA_LABEL, label)
             }
             context.startForegroundService(intent)
         }

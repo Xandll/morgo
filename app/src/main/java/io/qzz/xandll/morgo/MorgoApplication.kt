@@ -1,6 +1,7 @@
 package io.qzz.xandll.morgo
 
 import android.app.Application
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.os.Build
@@ -48,7 +49,10 @@ class MorgoApplication : Application(), Configuration.Provider {
             ).apply {
                 description = getString(R.string.notification_channel_alarm_desc)
                 enableVibration(true)
+                vibrationPattern = longArrayOf(0, 500, 200, 500)
                 setBypassDnd(true)
+                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
 
             val trainChannel = NotificationChannel(
@@ -92,7 +96,7 @@ class MorgoApplication : Application(), Configuration.Provider {
     }
 
     companion object {
-        const val CHANNEL_ALARM = "alarm_channel"
+        const val CHANNEL_ALARM = "alarm_alert"
         const val CHANNEL_TRAIN = "train_channel"
         const val CHANNEL_EVENING = "evening_check"
         const val CHANNEL_LIGHT = "prewake_light"

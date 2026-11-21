@@ -1,5 +1,7 @@
 package io.qzz.xandll.morgo.data.service
 
+import io.qzz.xandll.morgo.data.repository.SettingsRepository
+import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.domain.model.AlarmPlan
 import io.qzz.xandll.morgo.domain.model.AppSettings
 import java.time.LocalDate
@@ -12,19 +14,28 @@ import javax.inject.Singleton
 class MorningAlarmSync @Inject constructor(
     private val alarms: AlarmSchedulerService,
     private val lights: PreWakeLightScheduler,
-    private val secondary: SecondaryAlarmScheduler
+    private val secondary: SecondaryAlarmScheduler,
+    private val settingsRepository: SettingsRepository
 ) {
     fun apply(date: LocalDate, plan: AlarmPlan?, settings: AppSettings) {
         if (plan?.rings == true) {
-            move(date, plan.alarmTime, settings, plan.daySubjects)
+            move(date, plan.alarmTime, settings, plan.daySubjects, AlarmFace.DEFAULT_TITLE)
         } else {
+            settingsRepository.setAlarmTitle(AlarmFace.DEFAULT_TITLE)
             alarms.cancelAlarm()
             lights.cancel()
             secondary.cancelAll()
         }
     }
 
-    fun move(date: LocalDate, wake: LocalTime, settings: AppSettings, subjects: List<String>) {
+    fun move(
+        date: LocalDate,
+        wake: LocalTime,
+        settings: AppSettings,
+        subjects: List<String>,
+        title: String = AlarmFace.DEFAULT_TITLE
+    ) {
+        settingsRepository.setAlarmTitle(title)
         alarms.scheduleAlarm(date, wake)
         lights.schedule(date, wake, settings.homeAssistant.preWake)
         secondary.schedule(date, wake, settings.alarm, subjects)

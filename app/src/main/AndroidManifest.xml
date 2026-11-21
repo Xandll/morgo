@@ -113,6 +113,11 @@
             android:enabled="true"
             android:exported="false" />
 
+        <receiver
+            android:name=".data.receiver.AlarmActionReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
         <!-- WorkManager auto-initialization deaktivieren (via Configuration.Provider) -->
         <provider
             android:name="androidx.startup.InitializationProvider"

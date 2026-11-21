@@ -6,6 +6,7 @@ import androidx.security.crypto.EncryptedSharedPreferences
 import androidx.security.crypto.MasterKey
 import io.qzz.xandll.morgo.data.datasource.RadioBrowser
 import io.qzz.xandll.morgo.domain.model.*
+import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.domain.update.UpdateOffer
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -268,6 +269,17 @@ class SettingsRepository private constructor(
         _settingsFlow.value = settings
     }
 
+    fun alarmTitle(): String {
+        return regularPrefs.getString(KEY_ALARM_TITLE, AlarmFace.DEFAULT_TITLE)?.trim()
+            .orEmpty()
+            .ifBlank { AlarmFace.DEFAULT_TITLE }
+    }
+
+    fun setAlarmTitle(title: String) {
+        val next = title.trim().ifBlank { AlarmFace.DEFAULT_TITLE }
+        regularPrefs.edit().putString(KEY_ALARM_TITLE, next).apply()
+    }
+
     fun saveLessonCache(date: LocalDate, lessons: List<Lesson>) = lessonCache.save(date, lessons)
 
     fun readLessonCache(date: LocalDate): List<Lesson>? = lessonCache.read(date)
@@ -405,6 +417,7 @@ class SettingsRepository private constructor(
         private const val KEY_PREWAKE_INTERVAL = "prewake_interval"
         private const val KEY_PREWAKE_UNIT = "prewake_unit"
         private const val KEY_PREWAKE_BRIGHTNESS = "prewake_brightness"
+        private const val KEY_ALARM_TITLE = "alarm_face_title"
         private const val KEY_ALARM_ENABLED = "alarm_enabled"
         private const val KEY_ALARM_DEFAULT_HOUR = "alarm_default_hour"
         private const val KEY_ALARM_DEFAULT_MINUTE = "alarm_default_minute"

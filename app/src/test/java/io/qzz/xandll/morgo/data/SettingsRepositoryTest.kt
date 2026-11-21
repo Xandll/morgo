@@ -2,6 +2,7 @@ package io.qzz.xandll.morgo.data
 
 import android.content.SharedPreferences
 import io.qzz.xandll.morgo.data.datasource.RadioBrowser
+import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.domain.model.AppSettings
 import io.qzz.xandll.morgo.domain.model.WebUntisSettings
@@ -68,6 +69,17 @@ class SettingsRepositoryTest {
         val loaded = SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings()
         assertEquals(RadioBrowser.DEFAULT_HOST, loaded.alarm.music.radioBrowserHost)
         assertEquals(RadioBrowser.DEFAULT_HOST, regular.getString("radio_browser_host", null))
+    }
+
+    @Test
+    fun `plan b title is stored and a blank title falls back`() {
+        val regular = MemoryPrefs()
+        val repository = SettingsRepository.forPrefs(regular, MemoryPrefs())
+        assertEquals(AlarmFace.DEFAULT_TITLE, repository.alarmTitle())
+        repository.setAlarmTitle("Plan B")
+        assertEquals("Plan B", SettingsRepository.forPrefs(regular, MemoryPrefs()).alarmTitle())
+        repository.setAlarmTitle("  ")
+        assertEquals(AlarmFace.DEFAULT_TITLE, repository.alarmTitle())
     }
 
     @Test

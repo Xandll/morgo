@@ -53,6 +53,7 @@ import androidx.compose.material3.TimePicker
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -66,6 +67,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -123,6 +127,19 @@ fun SettingsScreen(
     val updateBusy by viewModel.updateBusy.collectAsState()
     val updateNotice by viewModel.updateNotice.collectAsState()
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    var fullScreenMissing by remember {
+        mutableStateOf(io.qzz.xandll.morgo.data.service.FullScreenIntents.needsPermission(context))
+    }
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                fullScreenMissing = io.qzz.xandll.morgo.data.service.FullScreenIntents.needsPermission(context)
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
     val pickApp = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val component = result.data?.component ?: return@rememberLauncherForActivityResult
         val alarm = settings.alarm
@@ -211,7 +228,11 @@ fun SettingsScreen(
         subjects = viewModel.subjects.collectAsState().value,
         onLoadSubjects = { viewModel.loadSubjects() },
         onCheckUpdates = { viewModel.checkForUpdates() },
-        updateBusy = updateBusy
+        updateBusy = updateBusy,
+        fullScreenMissing = fullScreenMissing,
+        onAllowFullScreen = {
+            context.startActivity(io.qzz.xandll.morgo.data.service.FullScreenIntents.settingsIntent(context))
+        }
     )
 
     viewModel.radioError.collectAsState().value?.let { message ->
@@ -298,7 +319,9 @@ fun SettingsBody(
     lightsLoading: Boolean = false,
     lightsMessage: String? = null,
     onCheckUpdates: () -> Unit = {},
-    updateBusy: Boolean = false
+    updateBusy: Boolean = false,
+    fullScreenMissing: Boolean = false,
+    onAllowFullScreen: () -> Unit = {}
 ) {
     val pagerState = rememberPagerState(initialPage = tab.coerceIn(0, tabs.lastIndex)) { tabs.size }
     LaunchedEffect(pagerState.currentPage) {
@@ -368,7 +391,7 @@ fun SettingsBody(
                                     settings.webUntis, onWebUntis, onTestUntis, onSearchSchools, schoolResults,
                                     onSelectSchool, onClearSchools, onParseQr, onParseServer, testingUntis, testResult, forceUntisEditor
                                 )
-                                AppearanceCard(settings, onApp, onCheckUpdates, updateBusy)
+                                AppearanceCard(settings, onApp, onCheckUpdates, updateBusy, fullScreenMissing, onAllowFullScreen)
                             }
                         }
                     }
@@ -407,7 +430,9 @@ private fun AppearanceCard(
     settings: AppSettings,
     onUpdate: (AppSettings) -> Unit,
     onCheckUpdates: () -> Unit,
-    updateBusy: Boolean
+    updateBusy: Boolean,
+    fullScreenMissing: Boolean = false,
+    onAllowFullScreen: () -> Unit = {}
 ) {
     SoftCard {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -460,6 +485,16 @@ private fun AppearanceCard(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+            if (fullScreenMissing) {
+                Text(
+                    "Der Wecker darf über dem Sperrbildschirm erscheinen. Ohne diese Freigabe gibt es nur eine Benachrichtigung.",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Button(onClick = onAllowFullScreen, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+                    Text("Sperrbildschirm-Wecker erlauben")
+                }
+            }
         }
     }
 }

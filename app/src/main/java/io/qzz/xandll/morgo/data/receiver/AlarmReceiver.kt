@@ -1,15 +1,19 @@
 package io.qzz.xandll.morgo.data.receiver
 
+import android.app.KeyguardManager
 import android.app.PendingIntent
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import io.qzz.xandll.morgo.MorgoApplication
 import io.qzz.xandll.morgo.R
+import io.qzz.xandll.morgo.data.service.AlarmAlerts
 import io.qzz.xandll.morgo.data.service.SecondaryAlarmScheduler
 import io.qzz.xandll.morgo.data.service.WakeSoundService
+import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.presentation.alarm.AlarmActivity
 
 /**
@@ -24,13 +28,22 @@ class AlarmReceiver : BroadcastReceiver() {
             notifyOnly(context, label)
             return
         }
-        val alarmIntent = Intent(context, AlarmActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            putExtra(SecondaryAlarmScheduler.EXTRA_KIND, kind)
-            putExtra(SecondaryAlarmScheduler.EXTRA_LABEL, label)
+        val power = context.getSystemService(PowerManager::class.java)
+        val keyguard = context.getSystemService(KeyguardManager::class.java)
+        val inUse = AlarmFace.deviceInUse(
+            interactive = power?.isInteractive == true,
+            keyguardLocked = keyguard?.isKeyguardLocked == true
+        )
+        if (!inUse) {
+            val alarmIntent = Intent(context, AlarmActivity::class.java).apply {
+                flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                putExtra(SecondaryAlarmScheduler.EXTRA_KIND, kind)
+                putExtra(SecondaryAlarmScheduler.EXTRA_LABEL, label)
+            }
+            context.startActivity(alarmIntent)
+            AlarmAlerts.turnScreenOn(context)
         }
-        context.startActivity(alarmIntent)
-        WakeSoundService.start(context, kind)
+        WakeSoundService.start(context, kind, label)
     }
 
     private fun notifyOnly(context: Context, label: String) {
