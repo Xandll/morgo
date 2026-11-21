@@ -77,6 +77,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.hilt.navigation.compose.hiltViewModel
 import android.content.Intent
 import androidx.compose.ui.platform.LocalContext
+import io.qzz.xandll.morgo.data.service.MusicShuffle
 import io.qzz.xandll.morgo.data.service.WakeMusic
 import io.qzz.xandll.morgo.data.service.WakeSoundService
 import io.qzz.xandll.morgo.domain.model.AlarmSettings
@@ -223,6 +224,8 @@ fun SettingsScreen(
                     context.startService(
                         Intent(context, WakeSoundService::class.java).setAction(WakeSoundService.ACTION_MUSIC_FAILED)
                     )
+                } else {
+                    MusicShuffle.request(context, alarm.music)
                 }
             }
             viewModel.testWakeSound()

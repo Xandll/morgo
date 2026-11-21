@@ -85,6 +85,18 @@ class SettingsRepositoryTest {
     }
 
     @Test
+    fun `shuffle stays on until it is turned off`() {
+        val regular = MemoryPrefs()
+        val repository = SettingsRepository.forPrefs(regular, MemoryPrefs())
+        assertTrue(repository.loadSettings().alarm.music.shuffle)
+        val off = repository.loadSettings().let { settings ->
+            settings.copy(alarm = settings.alarm.copy(music = settings.alarm.music.copy(shuffle = false)))
+        }
+        repository.saveSettings(off)
+        assertFalse(SettingsRepository.forPrefs(regular, MemoryPrefs()).loadSettings().alarm.music.shuffle)
+    }
+
+    @Test
     fun `a custom radio host is kept`() {
         val regular = MemoryPrefs()
         regular.edit().putString("radio_browser_host", "https://radio.example").apply()

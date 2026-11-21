@@ -37,6 +37,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.data.service.AlarmAlerts
 import io.qzz.xandll.morgo.data.service.SecondaryAlarmScheduler
+import io.qzz.xandll.morgo.data.service.MusicShuffle
 import io.qzz.xandll.morgo.data.service.WakeMusic
 import io.qzz.xandll.morgo.data.service.WakeSoundService
 import io.qzz.xandll.morgo.domain.model.AlarmFace
@@ -131,6 +132,8 @@ class AlarmActivity : ComponentActivity() {
         if (alarm.wakeSound != WakeSound.MUSIC || alarm.music.kind == MusicKind.STREAM) return
         if (!WakeMusic.open(this, alarm.music)) {
             startService(Intent(this, WakeSoundService::class.java).setAction(WakeSoundService.ACTION_MUSIC_FAILED))
+        } else {
+            MusicShuffle.request(this, alarm.music)
         }
     }
 

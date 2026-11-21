@@ -1,0 +1,84 @@
+package io.qzz.xandll.morgo.domain
+
+import io.qzz.xandll.morgo.domain.model.AppShuffleHook
+import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
+import io.qzz.xandll.morgo.domain.model.MusicKind
+import io.qzz.xandll.morgo.domain.model.MusicShufflePlan
+import io.qzz.xandll.morgo.domain.model.ShuffleTarget
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
+import org.junit.Test
+
+class MusicShufflePlanTest {
+
+    @Test
+    fun shuffleStaysOffForStreamsAndWhenTheSwitchIsOff() {
+        assertTrue(MusicAlarmSettings().shuffle)
+        assertNull(MusicShufflePlan.target(MusicAlarmSettings(kind = MusicKind.STREAM)))
+        assertNull(
+            MusicShufflePlan.target(
+                MusicAlarmSettings(kind = MusicKind.SPOTIFY, shuffle = false, spotifyInput = "spotify:playlist:1")
+            )
+        )
+        assertNull(MusicShufflePlan.target(MusicAlarmSettings(kind = MusicKind.APP, appPackage = "  ")))
+    }
+
+    @Test
+    fun spotifyGetsAPlayLinkAndAnotherAppStaysGeneric() {
+        val spotify = MusicShufflePlan.target(
+            MusicAlarmSettings(
+                kind = MusicKind.SPOTIFY,
+                spotifyInput = "https://open.spotify.com/playlist/37i9dQZF1DXcBWIGoYBM5M"
+            )
+        )
+        assertEquals(MusicShufflePlan.SPOTIFY_PACKAGE, spotify?.packageName)
+        assertEquals(listOf("spotify:playlist:37i9dQZF1DXcBWIGoYBM5M:play"), spotify?.deepLinks)
+        assertEquals("spotify:album:1X:play", MusicShufflePlan.spotifyPlayLink("spotify:album:1X"))
+        assertEquals("spotify:playlist:1:play", MusicShufflePlan.spotifyPlayLink("spotify:playlist:1:play"))
+        assertNull(MusicShufflePlan.spotifyPlayLink("https://example.com/playlist/1"))
+
+        val app = MusicShufflePlan.target(
+            MusicAlarmSettings(kind = MusicKind.APP, appPackage = "com.example.player", appLabel = "Player")
+        )
+        assertEquals(ShuffleTarget("com.example.player"), app)
+    }
+
+    @Test
+    fun anAppCanReplaceTheGenericPath() {
+        val hook = AppShuffleHook {
+            ShuffleTarget(
+                packageName = "com.example.player",
+                serviceClasses = listOf("com.example.player.MusicService"),
+                deepLinks = listOf("example:shuffle")
+            )
+        }
+        MusicShufflePlan.register("com.example.player", hook)
+        try {
+            val target = MusicShufflePlan.target(
+                MusicAlarmSettings(kind = MusicKind.APP, appPackage = "com.example.player")
+            )
+            assertEquals("com.example.player.MusicService", target?.serviceClasses?.single())
+            assertEquals(listOf("example:shuffle"), target?.deepLinks)
+        } finally {
+            MusicShufflePlan.unregister("com.example.player")
+        }
+        val after = MusicShufflePlan.target(
+            MusicAlarmSettings(kind = MusicKind.APP, appPackage = "com.example.player")
+        )
+        assertEquals(ShuffleTarget("com.example.player"), after)
+        MusicShufflePlan.register("com.example.player", AppShuffleHook { null })
+        try {
+            val fallback = MusicShufflePlan.target(
+                MusicAlarmSettings(kind = MusicKind.APP, appPackage = "com.example.player")
+            )
+            assertEquals(ShuffleTarget("com.example.player"), fallback)
+        } finally {
+            MusicShufflePlan.unregister("com.example.player")
+        }
+        assertEquals(
+            listOf("Discovered", "Preferred"),
+            MusicShufflePlan.serviceClasses(listOf("Discovered", ""), listOf("Preferred", "Discovered"))
+        )
+    }
+}

@@ -167,6 +167,22 @@ fun WakeSoundCard(
                         }
                     }
                 }
+                if (music.kind != MusicKind.STREAM) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text("Zufällige Wiedergabe")
+                            Text(
+                                "Morgo bittet die App darum. Klappt das nicht, startet sie wie bisher.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Switch(
+                            checked = music.shuffle,
+                            onCheckedChange = { onChange(alarm.copy(music = music.copy(shuffle = it))) }
+                        )
+                    }
+                }
                 StepperRow("Lauter werden", "${music.rampSeconds} s", {
                     onChange(alarm.copy(music = music.copy(rampSeconds = (music.rampSeconds - 5).coerceAtLeast(0))))
                 }, {

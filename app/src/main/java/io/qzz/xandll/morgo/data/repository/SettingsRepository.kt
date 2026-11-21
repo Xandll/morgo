@@ -260,6 +260,7 @@ class SettingsRepository private constructor(
             putInt(KEY_MUSIC_RAMP, music.rampSeconds)
             putInt(KEY_MUSIC_FALLBACK, music.fallbackSeconds)
             putInt(KEY_MUSIC_VOLUME, music.volumePercent)
+            putBoolean(KEY_MUSIC_SHUFFLE, music.shuffle)
             putString(KEY_RADIO_HOST, music.radioBrowserHost)
             putString(KEY_EXTRA_ALARMS, ExtraAlarmCodec.encode(settings.alarm.extraAlarms))
             putBoolean(KEY_DYNAMIC_COLOR, settings.useDynamicColor)
@@ -302,7 +303,8 @@ class SettingsRepository private constructor(
             rampSeconds = regularPrefs.getInt(KEY_MUSIC_RAMP, 30),
             fallbackSeconds = regularPrefs.getInt(KEY_MUSIC_FALLBACK, 20),
             volumePercent = regularPrefs.getInt(KEY_MUSIC_VOLUME, 70),
-            radioBrowserHost = migratedRadioHost()
+            radioBrowserHost = migratedRadioHost(),
+            shuffle = regularPrefs.getBoolean(KEY_MUSIC_SHUFFLE, true)
         )
     }
 
@@ -455,6 +457,7 @@ class SettingsRepository private constructor(
         private const val KEY_MUSIC_RAMP = "music_ramp_seconds"
         private const val KEY_MUSIC_FALLBACK = "music_fallback_seconds"
         private const val KEY_MUSIC_VOLUME = "music_volume_percent"
+        private const val KEY_MUSIC_SHUFFLE = "music_shuffle"
         private const val KEY_RADIO_HOST = "radio_browser_host"
         private const val KEY_EXTRA_ALARMS = "extra_alarms"
         private const val KEY_OVERRIDE_DATE = "day_override_date"
