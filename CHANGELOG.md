@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.6.6
+
+- Der Test-Button öffnet den großen Wecker direkt, solange Morgo vorn ist. Sonst bleibt es beim Vollbild-Hinweis. Fehlt die Freigabe ab Android 14, führen die Einstellungen dorthin. Ein entsperrtes Handy in Benutzung zeigt, wie die Google Uhr, nur die Benachrichtigung oben.
+- Die Uhr bekommt eine eigene Wecker-Meldung mit Schlummern und Stopp. Die Vordergrund-Meldung bleibt auf dem Telefon. Die Uhr hält Benachrichtigungen zurück, solange das Handy aktiv benutzt wird.
+- Licht vor dem Wecken testet alle eingestellten Stufen für die gewählten Einträge, in derselben Reihenfolge wie beim Wecken. Der Abstand ist kürzer. Der Fortschritt zeigt den Schritt, Fehler stehen darunter, und der Lauf lässt sich abbrechen.
+
 ## 1.6.5
 
 - Updates öffnen nur noch die GitHub-Release-Seite. Morgo lädt keine APK mehr und fordert die Installationsfreigabe nicht mehr an.
