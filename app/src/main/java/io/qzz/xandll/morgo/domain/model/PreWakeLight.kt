@@ -69,6 +69,15 @@ object PreWakeLightPlan {
         return "Licht geht um ${at.format(clock)} an"
     }
 
+    /** Testabstand: höchstens eine Sekunde, kürzere echte Abstände bleiben. */
+    fun testDelay(wait: Duration): Duration {
+        if (wait.isZero || wait.isNegative) return Duration.ZERO
+        val cap = Duration.ofSeconds(1)
+        return if (wait <= cap) wait else cap
+    }
+
+    fun progress(index: Int, total: Int): String = "Schritt ${index + 1}/$total"
+
     fun intervalSeconds(amount: Int, unit: LightIntervalUnit): Long {
         return when (unit) {
             LightIntervalUnit.SECONDS -> amount.coerceIn(1, 300).toLong()

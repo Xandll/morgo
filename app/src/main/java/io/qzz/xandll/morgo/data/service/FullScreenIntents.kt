@@ -12,7 +12,13 @@ object FullScreenIntents {
     fun needsPermission(context: Context): Boolean {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
         val manager = context.getSystemService(NotificationManager::class.java) ?: return false
-        return !manager.canUseFullScreenIntent()
+        return needsPermission(Build.VERSION.SDK_INT, manager.canUseFullScreenIntent())
+    }
+
+    /** Ab Android 14 (API 34) ist das Vollbild eine eigene Freigabe. */
+    fun needsPermission(sdkInt: Int, canUseFullScreenIntent: Boolean): Boolean {
+        if (sdkInt < Build.VERSION_CODES.UPSIDE_DOWN_CAKE) return false
+        return !canUseFullScreenIntent
     }
 
     fun settingsIntent(context: Context): Intent {

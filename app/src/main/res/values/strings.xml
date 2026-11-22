@@ -63,6 +63,8 @@
     <!-- Notifications -->
     <string name="notification_channel_alarm">Wecker</string>
     <string name="notification_channel_alarm_desc">Wecker auf dem Sperrbildschirm und auf der Uhr</string>
+    <string name="notification_channel_alarm_wear">Wecker auf der Uhr</string>
+    <string name="notification_channel_alarm_wear_desc">Schlummern und Stopp auf der Uhr. Kein Dauer-Hinweis, damit die Uhr ihn anzeigt.</string>
     <string name="notification_channel_train">Zugverspätungen</string>
     <string name="notification_channel_train_desc">Benachrichtigungen zu Zugverspätungen und Ausfällen</string>
     <string name="notification_train_delay_title">Zugverspätung</string>

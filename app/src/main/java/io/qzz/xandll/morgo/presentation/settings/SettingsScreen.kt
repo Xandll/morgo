@@ -81,6 +81,7 @@ import io.qzz.xandll.morgo.data.service.MusicShuffle
 import io.qzz.xandll.morgo.data.service.SonaraPlayback
 import io.qzz.xandll.morgo.domain.model.SonaraShuffle
 import io.qzz.xandll.morgo.data.service.WakeMusic
+import io.qzz.xandll.morgo.data.service.AlarmLaunch
 import io.qzz.xandll.morgo.data.service.WakeSoundService
 import io.qzz.xandll.morgo.domain.model.AlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
@@ -127,6 +128,7 @@ fun SettingsScreen(
     val secureBroken by viewModel.secureStorageBroken.collectAsState()
     val lightsLoading by viewModel.lightsLoading.collectAsState()
     val lightsMessage by viewModel.lightsMessage.collectAsState()
+    val lightTest by viewModel.lightTest.collectAsState()
     val updateBusy by viewModel.updateBusy.collectAsState()
     val updateNotice by viewModel.updateNotice.collectAsState()
     val context = LocalContext.current
@@ -219,6 +221,8 @@ fun SettingsScreen(
         testingHome = testBusy == ConnectionTestTarget.HOME_ASSISTANT,
         testResult = testResult,
         onTestLight = { viewModel.testPreWakeLight() },
+        onCancelLight = { viewModel.cancelLightTest() },
+        lightTest = lightTest,
         onTestLeaveLight = { viewModel.testLeaveLight() },
         radioResults = viewModel.radioStations.collectAsState().value,
         sonaraPlaylists = viewModel.sonaraPlaylists.collectAsState().value,
@@ -238,6 +242,9 @@ fun SettingsScreen(
                 }
             }
             viewModel.testWakeSound()
+            if (AlarmLaunch.openActivityDirectly(appInForeground = true)) {
+                context.startActivity(AlarmLaunch.testIntent(context))
+            }
         },
         subjects = viewModel.subjects.collectAsState().value,
         cachedLessons = viewModel.cachedLessons.collectAsState().value,
@@ -336,6 +343,8 @@ fun SettingsBody(
     forceHomeEditor: Boolean = false,
     showTopBar: Boolean = true,
     onTestLight: () -> Unit = {},
+    onCancelLight: () -> Unit = {},
+    lightTest: LightTestUi = LightTestUi(),
     radioResults: List<io.qzz.xandll.morgo.data.datasource.RadioStation> = emptyList(),
     sonaraPlaylists: List<io.qzz.xandll.morgo.domain.model.SonaraPlaylist> = emptyList(),
     onSearchRadio: (String) -> Unit = {},
@@ -405,7 +414,9 @@ fun SettingsBody(
                             0 -> AlarmTab(
                                 settings.alarm, onAlarm, lessonSlots, lessonStatus, lessonDetail, onWakeRule,
                                 radioResults, sonaraPlaylists, onSearchRadio, onPickApp, onTestSound, subjects, onLoadSubjects,
-                                cachedLessons
+                                cachedLessons,
+                                fullScreenMissing = fullScreenMissing,
+                                onAllowFullScreen = onAllowFullScreen
                             )
                             1 -> TrainSettings(settings.train, onTrain, onSearchStations, stationResults, stationLoading, stationError, onTestTrain, testingTrain)
                             2 -> Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -417,7 +428,11 @@ fun SettingsBody(
                                     onLoad = onLoadEntities,
                                     onTest = onTestLight,
                                     loading = lightsLoading,
-                                    statusMessage = lightsMessage
+                                    statusMessage = lightsMessage,
+                                    testRunning = lightTest.running,
+                                    testProgress = lightTest.progress,
+                                    testErrors = lightTest.errors,
+                                    onCancel = onCancelLight
                                 )
                                 LeaveLightOffCard(
                                     light = settings.homeAssistant.preWake,
@@ -456,9 +471,14 @@ private fun AlarmTab(
     onTestSound: () -> Unit,
     subjects: List<String>,
     onLoadSubjects: () -> Unit,
-    lessons: List<io.qzz.xandll.morgo.domain.model.Lesson> = emptyList()
+    lessons: List<io.qzz.xandll.morgo.domain.model.Lesson> = emptyList(),
+    fullScreenMissing: Boolean = false,
+    onAllowFullScreen: () -> Unit = {}
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        if (fullScreenMissing) {
+            FullScreenPermissionNote(onAllowFullScreen)
+        }
         AlarmSettings(settings, onUpdate)
         WakeSoundCard(
             settings, onUpdate, radioResults, onSearchRadio, onPickApp, onTestSound,
@@ -531,15 +551,22 @@ private fun AppearanceCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             if (fullScreenMissing) {
-                Text(
-                    "Der Wecker darf über dem Sperrbildschirm erscheinen. Ohne diese Freigabe gibt es nur eine Benachrichtigung.",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-                Button(onClick = onAllowFullScreen, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
-                    Text("Sperrbildschirm-Wecker erlauben")
-                }
+                FullScreenPermissionNote(onAllowFullScreen)
             }
+        }
+    }
+}
+
+@Composable
+fun FullScreenPermissionNote(onAllow: () -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            "Vollbild-Benachrichtigungen sind aus. Ab Android 14 bleibt der Wecker bei gesperrtem Bildschirm dann eine normale Benachrichtigung und erscheint nicht groß darüber.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.error
+        )
+        Button(onClick = onAllow, modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)) {
+            Text("Vollbild-Benachrichtigungen erlauben")
         }
     }
 }

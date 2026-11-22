@@ -230,6 +230,16 @@ fun WakeSoundCard(
                 Button(onClick = onTest, modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)) {
                     Text("Jetzt testen")
                 }
+                Text(
+                    "Ein entsperrtes Handy in Benutzung zeigt, wie die Google Uhr, nur die Benachrichtigung oben.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                Text(
+                    "Die Uhr hält Benachrichtigungen zurück, solange das Handy aktiv benutzt wird.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

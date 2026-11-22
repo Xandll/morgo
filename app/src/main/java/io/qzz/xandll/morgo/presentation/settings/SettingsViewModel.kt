@@ -10,8 +10,9 @@ import io.qzz.xandll.morgo.data.repository.MorgoRepository
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.data.service.EveningCheckScheduler
 import io.qzz.xandll.morgo.data.receiver.LeaveLightReceiver
-import io.qzz.xandll.morgo.data.receiver.PreWakeLightReceiver
 import io.qzz.xandll.morgo.data.service.LeaveLightScheduler
+import io.qzz.xandll.morgo.data.service.LightSequenceUpdate
+import io.qzz.xandll.morgo.data.service.PreWakeLightRunner
 import io.qzz.xandll.morgo.data.service.PreWakeLightScheduler
 import io.qzz.xandll.morgo.data.worker.AlarmRefresh
 import io.qzz.xandll.morgo.domain.model.AppSettings
@@ -35,6 +36,7 @@ import io.qzz.xandll.morgo.domain.model.SonaraPlaylist
 import io.qzz.xandll.morgo.util.ConnectionErrors
 import io.qzz.xandll.morgo.util.ErrorDetails
 import io.qzz.xandll.morgo.util.WebUntisStatusText
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
@@ -58,6 +60,7 @@ class SettingsViewModel @Inject constructor(
     private val repository: MorgoRepository,
     private val eveningCheckScheduler: EveningCheckScheduler,
     private val preWakeLightScheduler: PreWakeLightScheduler,
+    private val preWakeLightRunner: PreWakeLightRunner,
     private val leaveLightScheduler: LeaveLightScheduler,
     private val radioBrowser: RadioBrowserClient,
     private val updateCoordinator: UpdateCoordinator,
@@ -202,12 +205,28 @@ class SettingsViewModel @Inject constructor(
         _updateNotice.value = null
     }
 
+    private var lightTestJob: Job? = null
+    private val _lightTest = MutableStateFlow(LightTestUi())
+    val lightTest: StateFlow<LightTestUi> = _lightTest.asStateFlow()
+
     fun testPreWakeLight() {
-        context.sendBroadcast(Intent(context, PreWakeLightReceiver::class.java).apply {
-            action = PreWakeLightReceiver.ACTION_RUN
-            putExtra(PreWakeLightReceiver.EXTRA_STEP, 0)
-            putExtra(PreWakeLightReceiver.EXTRA_TEST, true)
-        })
+        if (_lightTest.value.running) return
+        lightTestJob?.cancel()
+        lightTestJob = viewModelScope.launch {
+            _lightTest.value = LightTestUi(running = true)
+            try {
+                preWakeLightRunner.runSequence(test = true) { update ->
+                    _lightTest.value = update.toUi(running = !update.done)
+                }
+            } catch (cancelled: CancellationException) {
+                _lightTest.value = _lightTest.value.copy(running = false, progress = "Abgebrochen")
+                throw cancelled
+            }
+        }
+    }
+
+    fun cancelLightTest() {
+        lightTestJob?.cancel()
     }
 
     fun testLeaveLight() {
@@ -630,6 +649,20 @@ class SettingsViewModel @Inject constructor(
         }
     }
 }
+
+data class LightTestUi(
+    val running: Boolean = false,
+    val progress: String? = null,
+    val errors: List<String> = emptyList(),
+    val done: Boolean = false
+)
+
+private fun LightSequenceUpdate.toUi(running: Boolean) = LightTestUi(
+    running = running,
+    progress = progress,
+    errors = errors,
+    done = done
+)
 
 enum class ConnectionTestTarget {
     WEBUNTIS,

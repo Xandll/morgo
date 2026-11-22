@@ -57,6 +57,19 @@ class MorgoApplication : Application(), Configuration.Provider {
                 lockscreenVisibility = Notification.VISIBILITY_PUBLIC
             }
 
+            val wearChannel = NotificationChannel(
+                CHANNEL_ALARM_WEAR,
+                getString(R.string.notification_channel_alarm_wear),
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = getString(R.string.notification_channel_alarm_wear_desc)
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 500, 200, 500)
+                setBypassDnd(true)
+                setSound(null, null)
+                lockscreenVisibility = Notification.VISIBILITY_PUBLIC
+            }
+
             val trainChannel = NotificationChannel(
                 CHANNEL_TRAIN,
                 getString(R.string.notification_channel_train),
@@ -90,6 +103,7 @@ class MorgoApplication : Application(), Configuration.Provider {
             }
 
             notificationManager.createNotificationChannel(alarmChannel)
+            notificationManager.createNotificationChannel(wearChannel)
             notificationManager.createNotificationChannel(trainChannel)
             notificationManager.createNotificationChannel(eveningChannel)
             notificationManager.createNotificationChannel(lightChannel)
@@ -99,6 +113,7 @@ class MorgoApplication : Application(), Configuration.Provider {
 
     companion object {
         const val CHANNEL_ALARM = "alarm_alert"
+        const val CHANNEL_ALARM_WEAR = "alarm_wear"
         const val CHANNEL_TRAIN = "train_channel"
         const val CHANNEL_EVENING = "evening_check"
         const val CHANNEL_LIGHT = "prewake_light"

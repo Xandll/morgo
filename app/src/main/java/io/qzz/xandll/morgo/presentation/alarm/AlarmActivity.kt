@@ -36,6 +36,7 @@ import androidx.core.content.ContextCompat
 import dagger.hilt.android.AndroidEntryPoint
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.data.service.AlarmAlerts
+import io.qzz.xandll.morgo.data.service.AlarmLaunch
 import io.qzz.xandll.morgo.data.service.SecondaryAlarmScheduler
 import io.qzz.xandll.morgo.data.service.MusicShuffle
 import io.qzz.xandll.morgo.data.service.SonaraPlayback
@@ -70,7 +71,13 @@ class AlarmActivity : ComponentActivity() {
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         val kind = intent.getStringExtra(SecondaryAlarmScheduler.EXTRA_KIND) ?: SecondaryAlarmScheduler.KIND_MAIN
         val label = intent.getStringExtra(SecondaryAlarmScheduler.EXTRA_LABEL).orEmpty()
-        if (kind == SecondaryAlarmScheduler.KIND_MAIN) {
+        val testing = intent.getBooleanExtra(AlarmLaunch.EXTRA_TEST, false)
+        if (testing) {
+            val alarm = settingsRepository.loadSettings().alarm
+            if (alarm.wakeSound == WakeSound.MUSIC && alarm.music.appPackage == SonaraShuffle.PACKAGE) {
+                SonaraPlayback.attachActivity(this)
+            }
+        } else if (kind == SecondaryAlarmScheduler.KIND_MAIN) {
             openWakeMusic()
         }
         setContent {
@@ -80,6 +87,7 @@ class AlarmActivity : ComponentActivity() {
                 val title = intent.getStringExtra(AlarmAlerts.EXTRA_TITLE)
                     ?: AlarmFace.title(kind, label, settingsRepository.alarmTitle())
                 val note = when {
+                    testing -> null
                     kind == SecondaryAlarmScheduler.KIND_MAIN && FollowUpPlan.shouldSchedule(true, settings) -> {
                         if (settings.followUpEvenIfAwake) {
                             "Zweiter Wecker in ${settings.followUpMinutes} Min., auch wenn du wach bist"
@@ -93,10 +101,10 @@ class AlarmActivity : ComponentActivity() {
                     snoozeMinutes = settings.snoozeMinutes,
                     headline = title,
                     note = note,
-                    showSnooze = AlarmFace.showSnooze(kind, settings.snoozeMinutes, withSound = true),
+                    showSnooze = !testing && AlarmFace.showSnooze(kind, settings.snoozeMinutes, withSound = true),
                     onDismiss = {
                         startService(Intent(this@AlarmActivity, WakeSoundService::class.java).apply {
-                            action = WakeSoundService.ACTION_AWAKE
+                            action = if (testing) WakeSoundService.ACTION_STOP else WakeSoundService.ACTION_AWAKE
                             putExtra(SecondaryAlarmScheduler.EXTRA_KIND, kind)
                         })
                         finish()

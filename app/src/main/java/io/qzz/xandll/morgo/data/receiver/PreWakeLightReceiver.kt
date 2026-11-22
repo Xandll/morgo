@@ -11,6 +11,7 @@ import io.qzz.xandll.morgo.MorgoApplication
 import io.qzz.xandll.morgo.R
 import io.qzz.xandll.morgo.data.service.PreWakeLightRunner
 import io.qzz.xandll.morgo.data.service.PreWakeLightScheduler
+import io.qzz.xandll.morgo.domain.model.PreWakeLightPlan
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,8 +37,8 @@ class PreWakeLightReceiver : BroadcastReceiver() {
         CoroutineScope(Dispatchers.IO).launch {
             try {
                 val outcome = runner.runStep(step)
-                notify(appContext, outcome.message)
-                val delay = outcome.nextDelay
+                notify(appContext, outcome)
+                val delay = outcome.nextDelay?.let { if (test) PreWakeLightPlan.testDelay(it) else it }
                 if (delay != null) {
                     scheduler.scheduleStep(
                         System.currentTimeMillis() + delay.toMillis(),
@@ -52,11 +53,16 @@ class PreWakeLightReceiver : BroadcastReceiver() {
         }
     }
 
-    private fun notify(context: Context, text: String) {
+    private fun notify(context: Context, outcome: io.qzz.xandll.morgo.data.service.LightStepResult) {
+        val text = buildString {
+            append(outcome.progress ?: outcome.message)
+            outcome.errors.forEach { append('\n').append(it) }
+        }
         val notification = NotificationCompat.Builder(context, MorgoApplication.CHANNEL_LIGHT)
             .setSmallIcon(R.drawable.ic_launcher_monochrome)
             .setContentTitle("Licht vor dem Wecken")
             .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
             .setAutoCancel(true)
             .build()
         context.getSystemService(NotificationManager::class.java).notify(NOTIFICATION_ID, notification)

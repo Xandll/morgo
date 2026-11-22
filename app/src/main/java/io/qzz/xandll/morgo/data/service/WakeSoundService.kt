@@ -94,6 +94,7 @@ class WakeSoundService : Service() {
             stopEverything()
             releaseWakeLock()
             ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_REMOVE)
+            AlarmAlerts.cancelWear(this)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -109,18 +110,20 @@ class WakeSoundService : Service() {
         if (test) soundStatus.clear()
         acquireWakeLock()
         if (action == null) runWakeActions(kind)
+        val notes = notifications(test, kind, label)
         try {
             ServiceCompat.startForeground(
                 this,
                 AlarmAlerts.NOTIFICATION_ID,
-                notification(test, kind, label),
+                notes.phone,
                 android.content.pm.ServiceInfo.FOREGROUND_SERVICE_TYPE_MEDIA_PLAYBACK
             )
+            publishWear(notes.wear)
         } catch (e: Exception) {
             val text = WakeSoundMath.streamFailure(e.javaClass.simpleName, e.message)
             if (test) soundStatus.reportFailure(text)
             getSystemService(android.app.NotificationManager::class.java)
-                .notify(AlarmAlerts.NOTIFICATION_ID, notification(test, kind, label, text))
+                .notify(AlarmAlerts.NOTIFICATION_ID, notifications(test, kind, label, text).phone)
             stopSelf()
             return START_NOT_STICKY
         }
@@ -139,6 +142,7 @@ class WakeSoundService : Service() {
         stopEverything()
         releaseWakeLock()
         releaseWifiLock()
+        AlarmAlerts.cancelWear(this)
         super.onDestroy()
     }
 
@@ -375,14 +379,28 @@ class WakeSoundService : Service() {
     }
 
     private fun notificationManagerNotify(text: String) {
-        val manager = getSystemService(android.app.NotificationManager::class.java)
-        manager.notify(
-            AlarmAlerts.NOTIFICATION_ID,
-            notification(test = testing, kind = SecondaryAlarmScheduler.KIND_MAIN, label = "", bodyOverride = text)
+        val notes = notifications(
+            test = testing,
+            kind = SecondaryAlarmScheduler.KIND_MAIN,
+            label = "",
+            bodyOverride = text
         )
+        val manager = getSystemService(android.app.NotificationManager::class.java)
+        manager.notify(AlarmAlerts.NOTIFICATION_ID, notes.phone)
+        publishWear(notes.wear)
     }
 
-    private fun notification(test: Boolean, kind: String, label: String, bodyOverride: String? = null): Notification {
+    private fun publishWear(notification: Notification) {
+        getSystemService(android.app.NotificationManager::class.java)
+            .notify(AlarmAlerts.WEAR_NOTIFICATION_ID, notification)
+    }
+
+    private fun notifications(
+        test: Boolean,
+        kind: String,
+        label: String,
+        bodyOverride: String? = null
+    ): AlarmNotes {
         val alarm = settingsRepository.loadSettings().alarm
         val power = getSystemService(PowerManager::class.java)
         val keyguard = getSystemService(android.app.KeyguardManager::class.java)
@@ -405,7 +423,7 @@ class WakeSoundService : Service() {
             )
         }
         val shown = if (bodyOverride != null) spec.copy(body = bodyOverride) else spec
-        return AlarmAlerts.notification(this, shown, kind, label, alarm.snoozeMinutes, test)
+        return AlarmAlerts.notifications(this, shown, kind, label, alarm.snoozeMinutes, test)
     }
 
     companion object {

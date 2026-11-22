@@ -11,20 +11,80 @@ import io.qzz.xandll.morgo.data.receiver.AlarmActionReceiver
 import io.qzz.xandll.morgo.domain.model.AlarmAlertSpec
 import io.qzz.xandll.morgo.presentation.alarm.AlarmActivity
 
+data class AlarmNotes(
+    val phone: android.app.Notification,
+    val wear: android.app.Notification
+)
+
 object AlarmAlerts {
     const val NOTIFICATION_ID = 2101
+    const val WEAR_NOTIFICATION_ID = 2102
     const val EXTRA_TITLE = "alarm_title"
     const val EXTRA_SNOOZE_MINUTES = "snooze_minutes"
 
-    fun notification(
+    /**
+     * Die Vordergrund-Meldung bleibt mit localOnly auf dem Telefon.
+     * Die zweite Meldung ist nicht dauerhaft und geht mit den Aktionen an die Uhr.
+     */
+    fun notifications(
         context: Context,
         spec: AlarmAlertSpec,
         kind: String,
         label: String,
         snoozeMinutes: Int,
         test: Boolean
-    ): android.app.Notification {
+    ): AlarmNotes {
         val open = activityIntent(context, kind, label, spec.title)
+        val actions = actions(context, spec, kind, snoozeMinutes, test)
+        val phone = NotificationCompat.Builder(context, MorgoApplication.CHANNEL_ALARM)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(spec.title)
+            .setContentText(spec.body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(spec.body))
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(spec.ongoing)
+            .setLocalOnly(true)
+            .setContentIntent(open)
+            .setAutoCancel(false)
+            .apply {
+                actions.forEach { addAction(it) }
+                if (spec.fullScreen && !test) setFullScreenIntent(open, true)
+            }
+            .build()
+        val wearable = NotificationCompat.WearableExtender()
+        actions.forEach { wearable.addAction(it) }
+        val wear = NotificationCompat.Builder(context, MorgoApplication.CHANNEL_ALARM_WEAR)
+            .setSmallIcon(R.drawable.ic_launcher_monochrome)
+            .setContentTitle(spec.title)
+            .setContentText(spec.body)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(spec.body))
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setPriority(NotificationCompat.PRIORITY_MAX)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setOngoing(false)
+            .setLocalOnly(false)
+            .setContentIntent(open)
+            .setAutoCancel(false)
+            .extend(wearable)
+            .apply { actions.forEach { addAction(it) } }
+            .build()
+        return AlarmNotes(phone, wear)
+    }
+
+    fun cancelWear(context: Context) {
+        context.getSystemService(android.app.NotificationManager::class.java)
+            ?.cancel(WEAR_NOTIFICATION_ID)
+    }
+
+    private fun actions(
+        context: Context,
+        spec: AlarmAlertSpec,
+        kind: String,
+        snoozeMinutes: Int,
+        test: Boolean
+    ): List<NotificationCompat.Action> {
         val stopAction = action(
             context,
             if (test) WakeSoundService.ACTION_STOP else WakeSoundService.ACTION_AWAKE,
@@ -47,25 +107,7 @@ object AlarmAlerts {
             )
         }
         actions += stopAction
-        val wearable = NotificationCompat.WearableExtender()
-        actions.forEach { wearable.addAction(it) }
-        val builder = NotificationCompat.Builder(context, MorgoApplication.CHANNEL_ALARM)
-            .setSmallIcon(R.drawable.ic_launcher_monochrome)
-            .setContentTitle(spec.title)
-            .setContentText(spec.body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(spec.body))
-            .setCategory(NotificationCompat.CATEGORY_ALARM)
-            .setPriority(NotificationCompat.PRIORITY_MAX)
-            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
-            .setOngoing(spec.ongoing)
-            .setContentIntent(open)
-            .setAutoCancel(false)
-            .extend(wearable)
-        actions.forEach { builder.addAction(it) }
-        if (spec.fullScreen && !test) {
-            builder.setFullScreenIntent(open, true)
-        }
-        return builder.build()
+        return actions
     }
 
     fun turnScreenOn(context: Context) {

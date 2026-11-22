@@ -45,7 +45,11 @@ fun PreWakeLightCard(
     onTest: () -> Unit,
     loading: Boolean = false,
     statusMessage: String? = null,
-    initialQuery: String = ""
+    initialQuery: String = "",
+    testRunning: Boolean = false,
+    testProgress: String? = null,
+    testErrors: List<String> = emptyList(),
+    onCancel: () -> Unit = {}
 ) {
     var query by rememberSaveable { mutableStateOf(initialQuery) }
     val choices = entities.filter { HomeAssistantTargets.isSelectable(it.entityId) }
@@ -201,11 +205,22 @@ fun PreWakeLightCard(
                 )
             }
             Button(
-                onClick = onTest,
-                enabled = light.entityIds.isNotEmpty(),
+                onClick = { if (testRunning) onCancel() else onTest() },
+                enabled = testRunning || light.entityIds.isNotEmpty(),
                 modifier = Modifier.fillMaxWidth().heightIn(min = 52.dp)
             ) {
-                Text("Jetzt testen")
+                Text(if (testRunning) "Abbrechen" else "Jetzt testen")
+            }
+            Text(
+                "Spielt alle Stufen für die gewählten Einträge, in derselben Reihenfolge wie beim Wecken. Der Abstand ist beim Test kürzer.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (!testProgress.isNullOrBlank()) {
+                Text(testProgress, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            }
+            testErrors.forEach { line ->
+                Text(line, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
             }
             if (light.entityIds.isEmpty()) {
                 Text(

@@ -18,8 +18,13 @@ import io.qzz.xandll.morgo.domain.model.MusicAlarmSettings
 import io.qzz.xandll.morgo.domain.model.MusicKind
 import io.qzz.xandll.morgo.domain.model.SonaraPlaylist
 import io.qzz.xandll.morgo.domain.model.SonaraShuffle
+import io.qzz.xandll.morgo.domain.model.EntityType
+import io.qzz.xandll.morgo.domain.model.HomeAssistantEntity
+import io.qzz.xandll.morgo.domain.model.LightIntervalUnit
+import io.qzz.xandll.morgo.domain.model.PreWakeLightSettings
 import io.qzz.xandll.morgo.domain.model.WakeSound
 import io.qzz.xandll.morgo.domain.model.LessonSlot
+import io.qzz.xandll.morgo.presentation.settings.PreWakeLightCard
 import io.qzz.xandll.morgo.domain.model.WakeTimeRule
 import io.qzz.xandll.morgo.presentation.settings.ExtraAlarmsCard
 import io.qzz.xandll.morgo.presentation.settings.FollowUpCard
@@ -54,6 +59,7 @@ class WakeOptionsScreenshotTest {
     @Test fun extraDark() = shot("extra-wecker-dark", true) { ExtraSample() }
     @Test fun wakeTableLight() = shot("weckzeit-tabelle-light", false) { WakeTableSample() }
     @Test fun wakeTableDark() = shot("weckzeit-tabelle-dark", true) { WakeTableSample() }
+    @Test fun lightTestLight() = shot("licht-test-fortschritt", false) { LightTestSample() }
 
     private fun shot(name: String, dark: Boolean, content: @Composable () -> Unit) {
         paparazzi.snapshot(name = name) {
@@ -173,6 +179,32 @@ class WakeOptionsScreenshotTest {
                 Lesson(LocalDate.of(2026, 11, 30), LocalTime.of(7, 45), LocalTime.of(8, 35), "Turnen", "", "", LessonStatus.REGULAR)
             ),
             today = today
+        )
+    }
+
+    @Composable
+    private fun LightTestSample() {
+        PreWakeLightCard(
+            light = PreWakeLightSettings(
+                enabled = true,
+                entityIds = listOf("light.lampe", "script.morgen"),
+                leadMinutes = 10,
+                toggleCount = 4,
+                intervalAmount = 20,
+                intervalUnit = LightIntervalUnit.SECONDS,
+                brightness = 204
+            ),
+            entities = listOf(
+                HomeAssistantEntity("light.lampe", "Lampe", "off", EntityType.LIGHT),
+                HomeAssistantEntity("script.morgen", "Morgen", "off", EntityType.SCRIPT)
+            ),
+            onChange = {},
+            onLoad = {},
+            onTest = {},
+            testRunning = true,
+            testProgress = "Schritt 3/5",
+            testErrors = listOf("Schritt 2/5: light.lampe: Nicht erreichbar"),
+            onCancel = {}
         )
     }
 }

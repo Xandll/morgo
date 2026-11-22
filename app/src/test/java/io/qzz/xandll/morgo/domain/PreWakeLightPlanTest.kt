@@ -8,6 +8,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.Duration
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
@@ -87,6 +88,15 @@ class PreWakeLightPlanTest {
     @Test
     fun toggleCountIsCappedAtTen() {
         assertEquals(11, PreWakeLightPlan.steps(40, 5).size)
+    }
+
+    @Test
+    fun testDelayCapsLongGapsAtOneSecond() {
+        assertEquals(Duration.ZERO, PreWakeLightPlan.testDelay(Duration.ZERO))
+        assertEquals(Duration.ofSeconds(1), PreWakeLightPlan.testDelay(Duration.ofSeconds(1)))
+        assertEquals(Duration.ofSeconds(1), PreWakeLightPlan.testDelay(Duration.ofSeconds(30)))
+        assertEquals(Duration.ofSeconds(1), PreWakeLightPlan.testDelay(Duration.ofMinutes(15)))
+        assertEquals("Schritt 3/5", PreWakeLightPlan.progress(2, 5))
     }
 
     @Test
