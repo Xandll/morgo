@@ -169,4 +169,69 @@ class PreWakeLightRunnerTest {
         assertEquals(1, steps)
         assertEquals(listOf(Duration.ofSeconds(1)), pauses)
     }
+
+    @Test
+    fun `sequence waits the stored milliseconds and still calls home assistant in order`() = runTest {
+        val calls = mutableListOf<String>()
+        val home = HomeAssistantClient(HttpClient(MockEngine { request ->
+            calls += request.url.encodedPath
+            respond("[]", HttpStatusCode.OK, headersOf(HttpHeaders.ContentType, "application/json"))
+        }) {
+            expectSuccess = false
+            install(ContentNegotiation) {
+                json(Json { ignoreUnknownKeys = true })
+            }
+        })
+        val settingsRepository = SettingsRepository.forPrefs(MemoryPrefs(), MemoryPrefs())
+        val current = settingsRepository.loadSettings()
+        settingsRepository.saveSettings(
+            current.copy(
+                homeAssistant = current.homeAssistant.copy(
+                    url = "https://home.example",
+                    token = "token",
+                    preWake = PreWakeLightSettings(
+                        enabled = true,
+                        entityIds = listOf("script.morgen", "light.lampe"),
+                        toggleCount = 2,
+                        intervalMillis = 300
+                    )
+                )
+            )
+        )
+        val runner = PreWakeLightRunner(
+            MorgoRepository(WebUntisClient(), HafasClient(), home),
+            settingsRepository
+        )
+        val pauses = mutableListOf<Duration>()
+
+        runner.runSequence(test = false, pause = { pauses += it }, onUpdate = {})
+
+        assertEquals(
+            listOf(
+                "/api/services/script/turn_on",
+                "/api/services/light/turn_on",
+                "/api/services/script/turn_on",
+                "/api/services/light/toggle",
+                "/api/services/script/turn_on",
+                "/api/services/light/toggle"
+            ),
+            calls
+        )
+        assertEquals(listOf(Duration.ofMillis(300), Duration.ofMillis(300)), pauses)
+
+        calls.clear()
+        pauses.clear()
+        settingsRepository.saveSettings(
+            settingsRepository.loadSettings().let { settings ->
+                settings.copy(
+                    homeAssistant = settings.homeAssistant.copy(
+                        preWake = settings.homeAssistant.preWake.copy(intervalMillis = 0)
+                    )
+                )
+            }
+        )
+        runner.runSequence(test = true, pause = { pauses += it }, onUpdate = {})
+        assertEquals(6, calls.size)
+        assertTrue(pauses.isEmpty())
+    }
 }

@@ -5,6 +5,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 enum class LightIntervalUnit {
     SECONDS,
@@ -20,6 +21,11 @@ data class PreWakeLightSettings(
     val entityIds: List<String> = emptyList(),
     val leadMinutes: Int = 10,
     val toggleCount: Int = 3,
+    /**
+     * Abstand in Millisekunden. Negativ heißt: noch der alte Wert aus
+     * [intervalAmount] und [intervalUnit], bis er migriert ist.
+     */
+    val intervalMillis: Long = -1,
     val intervalAmount: Int = 15,
     val intervalUnit: LightIntervalUnit = LightIntervalUnit.SECONDS,
     val brightness: Int? = null,
@@ -28,6 +34,12 @@ data class PreWakeLightSettings(
     val leaveOff: Map<String, LeaveOffChoice> = emptyMap()
 ) {
     fun isActive(): Boolean = enabled && entityIds.isNotEmpty()
+
+    /** Wirklicher Abstand. Alte Sekunden- und Minutenwerte werden dabei umgerechnet. */
+    fun delayMillis(): Long {
+        if (intervalMillis >= 0) return intervalMillis.coerceIn(0L, PreWakeLightPlan.MAX_INTERVAL_MILLIS)
+        return PreWakeLightPlan.migrateMillis(intervalAmount, intervalUnit)
+    }
 
     fun summaryLine(): String {
         if (!isActive()) return "aus"
@@ -43,6 +55,66 @@ data class LightStep(
 object PreWakeLightPlan {
 
     private val clock: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+    const val MAX_INTERVAL_MILLIS = 30L * 60L * 1000L
+    private const val MAX_SECONDS = 300L
+    private const val MAX_MINUTES = 30
+
+    /**
+     * Gespeicherte Sekunden oder Minuten in Millisekunden.
+     * Der alte Bereich bleibt: 1–300 Sekunden oder 1–30 Minuten.
+     */
+    fun migrateMillis(amount: Int, unit: LightIntervalUnit): Long {
+        return when (unit) {
+            LightIntervalUnit.MINUTES -> amount.coerceIn(1, MAX_MINUTES) * 60_000L
+            LightIntervalUnit.SECONDS -> amount.coerceIn(1, MAX_SECONDS.toInt()) * 1_000L
+        }
+    }
+
+    /** Anzeige auf Deutsch. Unter einer Sekunde eine Nachkommastelle, 0 bleibt „0 s“. */
+    fun formatInterval(millis: Long, unit: LightIntervalUnit): String {
+        val ms = millis.coerceIn(0, MAX_INTERVAL_MILLIS)
+        if (unit == LightIntervalUnit.MINUTES) {
+            return "${ms / 60_000L} min"
+        }
+        if (ms == 0L) return "0 s"
+        if (ms < 1_000L || ms % 1_000L != 0L) {
+            val text = String.format(Locale.GERMAN, "%.1f", ms / 1000.0)
+            return "$text s"
+        }
+        return "${ms / 1_000L} s"
+    }
+
+    /** Sekunden-Schritt: unter einer Sekunde in 100-ms-Schritten, 0 ist erlaubt. */
+    fun stepSeconds(millis: Long, delta: Int): Long {
+        val ms = millis.coerceIn(0, MAX_SECONDS * 1_000L)
+        val next = when {
+            delta < 0 && ms in 1..1_000 -> ms - 100
+            delta > 0 && ms < 1_000 -> ms + 100
+            else -> ms + delta * 1_000L
+        }
+        return next.coerceIn(0, MAX_SECONDS * 1_000L)
+    }
+
+    fun stepMinutes(millis: Long, delta: Int): Long {
+        val minutes = (millis / 60_000L).toInt().coerceIn(1, MAX_MINUTES)
+        return (minutes + delta).coerceIn(1, MAX_MINUTES) * 60_000L
+    }
+
+    /**
+     * Wechsel der Einheit wie bisher über die angezeigte Zahl:
+     * 20 Sekunden werden 20 Minuten, 20 Minuten werden 20 Sekunden.
+     */
+    fun switchUnit(millis: Long, from: LightIntervalUnit, to: LightIntervalUnit): Long {
+        if (from == to) return millis.coerceIn(0, MAX_INTERVAL_MILLIS)
+        val count = when (from) {
+            LightIntervalUnit.MINUTES -> (millis / 60_000L).toInt()
+            LightIntervalUnit.SECONDS -> if (millis < 1_000L) 0 else (millis / 1_000L).toInt()
+        }
+        return when (to) {
+            LightIntervalUnit.MINUTES -> count.coerceIn(1, MAX_MINUTES) * 60_000L
+            LightIntervalUnit.SECONDS -> count.coerceIn(1, MAX_SECONDS.toInt()) * 1_000L
+        }
+    }
 
     fun shouldArm(rings: Boolean, light: PreWakeLightSettings): Boolean {
         return rings && light.isActive()
@@ -87,8 +159,13 @@ object PreWakeLightPlan {
 
     /** Erst einschalten, danach [toggleCount] Umschaltungen im festen Abstand. */
     fun steps(toggleCount: Int, intervalSeconds: Long): List<LightStep> {
+        return stepsFor(toggleCount, intervalSeconds.coerceAtLeast(1) * 1_000L)
+    }
+
+    /** Wie [steps], der Abstand ist Millisekunden. 0 lässt die Schritte direkt nacheinander laufen. */
+    fun stepsFor(toggleCount: Int, intervalMillis: Long): List<LightStep> {
         val count = toggleCount.coerceIn(0, 10)
-        val gap = Duration.ofSeconds(intervalSeconds.coerceAtLeast(1))
+        val gap = Duration.ofMillis(intervalMillis.coerceIn(0, MAX_INTERVAL_MILLIS))
         return buildList {
             add(LightStep(Duration.ZERO, turnOn = true))
             repeat(count) { add(LightStep(gap, turnOn = false)) }

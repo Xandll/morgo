@@ -41,10 +41,7 @@ class PreWakeLightRunner @Inject constructor(
         if (light.entityIds.isEmpty()) {
             return LightStepResult("Kein Licht ausgewählt", null)
         }
-        val steps = PreWakeLightPlan.steps(
-            light.toggleCount,
-            PreWakeLightPlan.intervalSeconds(light.intervalAmount, light.intervalUnit)
-        )
+        val steps = PreWakeLightPlan.stepsFor(light.toggleCount, light.delayMillis())
         val step = steps.getOrNull(index) ?: return LightStepResult("Licht ist fertig", null)
         val kind = if (step.turnOn) HaServiceKind.TURN_ON else HaServiceKind.TOGGLE
         val errors = ArrayList<String>()

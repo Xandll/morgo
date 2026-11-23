@@ -6,6 +6,8 @@ import io.qzz.xandll.morgo.domain.model.AlarmFace
 import io.qzz.xandll.morgo.data.repository.SettingsRepository
 import io.qzz.xandll.morgo.domain.model.AppSettings
 import io.qzz.xandll.morgo.domain.model.LeaveOffChoice
+import io.qzz.xandll.morgo.domain.model.LightIntervalUnit
+import io.qzz.xandll.morgo.domain.model.PreWakeLightPlan
 import io.qzz.xandll.morgo.domain.model.PreWakeLightSettings
 import io.qzz.xandll.morgo.domain.model.WebUntisSettings
 import org.junit.Assert.assertEquals
@@ -144,5 +146,34 @@ class SettingsRepositoryTest {
         assertTrue(again.leaveOffEnabled)
         assertEquals(2, again.leaveOffOffsetMinutes)
         assertEquals(2, again.leaveOff.getValue("script.licht_1").calls)
+    }
+
+    @Test
+    fun `old second and minute gaps load as the same milliseconds`() {
+        val seconds = MemoryPrefs()
+        seconds.edit().putInt("prewake_interval", 15).putString("prewake_unit", "SECONDS").apply()
+        val fromSeconds = SettingsRepository.forPrefs(seconds, MemoryPrefs()).loadSettings().homeAssistant.preWake
+        assertEquals(15_000L, fromSeconds.delayMillis())
+        assertEquals(LightIntervalUnit.SECONDS, fromSeconds.intervalUnit)
+        assertEquals("15 s", PreWakeLightPlan.formatInterval(fromSeconds.delayMillis(), fromSeconds.intervalUnit))
+
+        val minutes = MemoryPrefs()
+        minutes.edit().putInt("prewake_interval", 2).putString("prewake_unit", "MINUTES").apply()
+        val fromMinutes = SettingsRepository.forPrefs(minutes, MemoryPrefs()).loadSettings().homeAssistant.preWake
+        assertEquals(120_000L, fromMinutes.delayMillis())
+        assertEquals("2 min", PreWakeLightPlan.formatInterval(fromMinutes.delayMillis(), fromMinutes.intervalUnit))
+
+        val repository = SettingsRepository.forPrefs(seconds, MemoryPrefs())
+        val current = repository.loadSettings()
+        repository.saveSettings(
+            current.copy(
+                homeAssistant = current.homeAssistant.copy(
+                    preWake = fromSeconds.copy(intervalMillis = 300, intervalUnit = LightIntervalUnit.SECONDS)
+                )
+            )
+        )
+        val again = SettingsRepository.forPrefs(seconds, MemoryPrefs()).loadSettings().homeAssistant.preWake
+        assertEquals(300L, again.delayMillis())
+        assertEquals("0,3 s", PreWakeLightPlan.formatInterval(again.delayMillis(), again.intervalUnit))
     }
 }

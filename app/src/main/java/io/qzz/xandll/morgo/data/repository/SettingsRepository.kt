@@ -227,7 +227,7 @@ class SettingsRepository private constructor(
             putString(KEY_PREWAKE_ENTITIES, preWake.entityIds.joinToString("\n"))
             putInt(KEY_PREWAKE_LEAD, preWake.leadMinutes)
             putInt(KEY_PREWAKE_TOGGLES, preWake.toggleCount)
-            putInt(KEY_PREWAKE_INTERVAL, preWake.intervalAmount)
+            putInt(KEY_PREWAKE_INTERVAL_MS, preWake.delayMillis().toInt())
             putString(KEY_PREWAKE_UNIT, preWake.intervalUnit.name)
             putInt(KEY_PREWAKE_BRIGHTNESS, preWake.brightness ?: -1)
             putBoolean(KEY_LEAVE_ENABLED, preWake.leaveOffEnabled)
@@ -325,6 +325,15 @@ class SettingsRepository private constructor(
         val unitName = regularPrefs.getString(KEY_PREWAKE_UNIT, LightIntervalUnit.SECONDS.name)
         val unit = runCatching { LightIntervalUnit.valueOf(unitName ?: "") }
             .getOrDefault(LightIntervalUnit.SECONDS)
+        val millis = if (regularPrefs.contains(KEY_PREWAKE_INTERVAL_MS)) {
+            regularPrefs.getInt(KEY_PREWAKE_INTERVAL_MS, 15_000).toLong()
+                .coerceIn(0L, PreWakeLightPlan.MAX_INTERVAL_MILLIS)
+        } else {
+            PreWakeLightPlan.migrateMillis(
+                regularPrefs.getInt(KEY_PREWAKE_INTERVAL, 15),
+                unit
+            )
+        }
         val brightness = regularPrefs.getInt(KEY_PREWAKE_BRIGHTNESS, -1)
         return PreWakeLightSettings(
             enabled = regularPrefs.getBoolean(KEY_PREWAKE_ENABLED, false),
@@ -333,7 +342,7 @@ class SettingsRepository private constructor(
                 .filter { it.isNotBlank() },
             leadMinutes = regularPrefs.getInt(KEY_PREWAKE_LEAD, 10),
             toggleCount = regularPrefs.getInt(KEY_PREWAKE_TOGGLES, 3),
-            intervalAmount = regularPrefs.getInt(KEY_PREWAKE_INTERVAL, 15),
+            intervalMillis = millis,
             intervalUnit = unit,
             brightness = brightness.takeIf { it in 1..255 },
             leaveOffEnabled = regularPrefs.getBoolean(KEY_LEAVE_ENABLED, false),
@@ -429,6 +438,7 @@ class SettingsRepository private constructor(
         private const val KEY_PREWAKE_LEAD = "prewake_lead"
         private const val KEY_PREWAKE_TOGGLES = "prewake_toggles"
         private const val KEY_PREWAKE_INTERVAL = "prewake_interval"
+        private const val KEY_PREWAKE_INTERVAL_MS = "prewake_interval_ms"
         private const val KEY_PREWAKE_UNIT = "prewake_unit"
         private const val KEY_PREWAKE_BRIGHTNESS = "prewake_brightness"
         private const val KEY_LEAVE_ENABLED = "leave_light_enabled"

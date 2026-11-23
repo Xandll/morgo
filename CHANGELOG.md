@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.6.8
+
+- Der Abstand zwischen den Licht-Schritten kann unter einer Sekunde liegen. In den Sekunden geht es in Zehntelschritten bis 0, zum Beispiel 0,3 s. 0 lässt die Schritte direkt nacheinander laufen. Gespeicherte Sekunden und Minuten bleiben gleich lang.
+
 ## 1.6.7
 
 - Zugwahl: Ein bevorzugter Zug der Stunde (z. B. 07:04 R 3) gilt jetzt auch für die Zugkarte und den Live-Check. Bisher wurde er ignoriert, die Suche startete zwei Stunden vor der Stunde und las nur drei Verbindungen – so erschien ein Zug, der vor dem Wecken abfuhr. Es wird ab dem bevorzugten Zug gesucht und bei Bedarf nachgeladen; Züge vor Weckzeit plus Vorbereitung zählen nie. Ohne Wunschzug gilt der letzte Zug, der noch rechtzeitig ankommt.

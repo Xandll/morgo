@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.dp
 import io.qzz.xandll.morgo.domain.model.HomeAssistantEntity
 import io.qzz.xandll.morgo.domain.model.HomeAssistantTargets
 import io.qzz.xandll.morgo.domain.model.LightIntervalUnit
+import io.qzz.xandll.morgo.domain.model.PreWakeLightPlan
 import io.qzz.xandll.morgo.domain.model.PreWakeLightSettings
 import io.qzz.xandll.morgo.presentation.ui.IconBadge
 import io.qzz.xandll.morgo.presentation.ui.SoftCard
@@ -69,7 +70,7 @@ fun PreWakeLightCard(
             entity.entityId.contains(query, ignoreCase = true) ||
             label.contains(query, ignoreCase = true)
     }
-    val intervalMax = if (light.intervalUnit == LightIntervalUnit.SECONDS) 300 else 30
+    val millis = light.delayMillis()
     SoftCard {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -106,26 +107,54 @@ fun PreWakeLightCard(
             )
             StepperRow(
                 title = "Abstand",
-                valueLabel = if (light.intervalUnit == LightIntervalUnit.SECONDS) {
-                    "${light.intervalAmount} s"
-                } else {
-                    "${light.intervalAmount} min"
+                valueLabel = PreWakeLightPlan.formatInterval(millis, light.intervalUnit),
+                onMinus = {
+                    val next = if (light.intervalUnit == LightIntervalUnit.MINUTES) {
+                        PreWakeLightPlan.stepMinutes(millis, -1)
+                    } else {
+                        PreWakeLightPlan.stepSeconds(millis, -1)
+                    }
+                    onChange(light.copy(intervalMillis = next))
                 },
-                onMinus = { onChange(light.copy(intervalAmount = (light.intervalAmount - 1).coerceAtLeast(1))) },
-                onPlus = { onChange(light.copy(intervalAmount = (light.intervalAmount + 1).coerceAtMost(intervalMax))) }
+                onPlus = {
+                    val next = if (light.intervalUnit == LightIntervalUnit.MINUTES) {
+                        PreWakeLightPlan.stepMinutes(millis, 1)
+                    } else {
+                        PreWakeLightPlan.stepSeconds(millis, 1)
+                    }
+                    onChange(light.copy(intervalMillis = next))
+                }
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 FilterChip(
                     selected = light.intervalUnit == LightIntervalUnit.SECONDS,
                     onClick = {
-                        onChange(light.copy(intervalUnit = LightIntervalUnit.SECONDS, intervalAmount = light.intervalAmount.coerceIn(1, 300)))
+                        onChange(
+                            light.copy(
+                                intervalUnit = LightIntervalUnit.SECONDS,
+                                intervalMillis = PreWakeLightPlan.switchUnit(
+                                    millis,
+                                    light.intervalUnit,
+                                    LightIntervalUnit.SECONDS
+                                )
+                            )
+                        )
                     },
                     label = { Text("Sekunden") }
                 )
                 FilterChip(
                     selected = light.intervalUnit == LightIntervalUnit.MINUTES,
                     onClick = {
-                        onChange(light.copy(intervalUnit = LightIntervalUnit.MINUTES, intervalAmount = light.intervalAmount.coerceIn(1, 30)))
+                        onChange(
+                            light.copy(
+                                intervalUnit = LightIntervalUnit.MINUTES,
+                                intervalMillis = PreWakeLightPlan.switchUnit(
+                                    millis,
+                                    light.intervalUnit,
+                                    LightIntervalUnit.MINUTES
+                                )
+                            )
+                        )
                     },
                     label = { Text("Minuten") }
                 )

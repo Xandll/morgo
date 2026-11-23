@@ -104,4 +104,44 @@ class PreWakeLightPlanTest {
         assertEquals(120, PreWakeLightPlan.intervalSeconds(2, LightIntervalUnit.MINUTES))
         assertEquals(20, PreWakeLightPlan.intervalSeconds(20, LightIntervalUnit.SECONDS))
     }
+
+    @Test
+    fun storedSecondsAndMinutesBecomeMilliseconds() {
+        assertEquals(15_000L, PreWakeLightPlan.migrateMillis(15, LightIntervalUnit.SECONDS))
+        assertEquals(120_000L, PreWakeLightPlan.migrateMillis(2, LightIntervalUnit.MINUTES))
+        assertEquals(
+            15_000L,
+            PreWakeLightSettings(intervalAmount = 15, intervalUnit = LightIntervalUnit.SECONDS).delayMillis()
+        )
+        assertEquals(300L, PreWakeLightSettings(intervalMillis = 300).delayMillis())
+        assertEquals(0L, PreWakeLightSettings(intervalMillis = 0).delayMillis())
+    }
+
+    @Test
+    fun intervalLabelUsesAGermanDecimalBelowOneSecond() {
+        assertEquals("0,3 s", PreWakeLightPlan.formatInterval(300, LightIntervalUnit.SECONDS))
+        assertEquals("0 s", PreWakeLightPlan.formatInterval(0, LightIntervalUnit.SECONDS))
+        assertEquals("20 s", PreWakeLightPlan.formatInterval(20_000, LightIntervalUnit.SECONDS))
+        assertEquals("2 min", PreWakeLightPlan.formatInterval(120_000, LightIntervalUnit.MINUTES))
+    }
+
+    @Test
+    fun secondsStepByATenthBelowOneSecondAndMinutesStayWhole() {
+        assertEquals(900L, PreWakeLightPlan.stepSeconds(1_000, -1))
+        assertEquals(1_000L, PreWakeLightPlan.stepSeconds(900, 1))
+        assertEquals(0L, PreWakeLightPlan.stepSeconds(0, -1))
+        assertEquals(300_000L, PreWakeLightPlan.stepSeconds(300_000, 1))
+        assertEquals(180_000L, PreWakeLightPlan.stepMinutes(120_000, 1))
+        assertEquals(20 * 60_000L, PreWakeLightPlan.switchUnit(20_000, LightIntervalUnit.SECONDS, LightIntervalUnit.MINUTES))
+        assertEquals(20_000L, PreWakeLightPlan.switchUnit(20 * 60_000L, LightIntervalUnit.MINUTES, LightIntervalUnit.SECONDS))
+    }
+
+    @Test
+    fun subSecondGapIsKeptAndZeroRunsStepsBackToBack() {
+        val quick = PreWakeLightPlan.stepsFor(2, 300)
+        assertEquals(Duration.ofMillis(300), quick[1].wait)
+        assertEquals(Duration.ofMillis(300), quick[2].wait)
+        assertEquals(Duration.ZERO, PreWakeLightPlan.stepsFor(2, 0)[1].wait)
+        assertEquals(Duration.ofMillis(300), PreWakeLightPlan.testDelay(Duration.ofMillis(300)))
+    }
 }
