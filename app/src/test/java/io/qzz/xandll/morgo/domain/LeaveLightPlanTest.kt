@@ -27,6 +27,14 @@ class LeaveLightPlanTest {
     }
 
     @Test
+    fun leaveHintIsHiddenWhenItWouldBeBeforeTheWakeTime() {
+        val beforeWake = LeaveLightPlan.leaveAt(date, LocalTime.of(5, 45), walkingMinutes = 10, offsetMinutes = 0)
+        assertNull(LeaveLightPlan.hintAfterWake(beforeWake, LocalTime.of(6, 30)))
+        val afterWake = LeaveLightPlan.leaveAt(date, LocalTime.of(7, 4), walkingMinutes = 10, offsetMinutes = 0)
+        assertEquals("Licht aus um 06:54", LeaveLightPlan.hintAfterWake(afterWake, LocalTime.of(6, 30)))
+    }
+
+    @Test
     fun delayUsesTheUpdatedDeparture() {
         val train = train(planned = LocalTime.of(7, 20), actual = LocalTime.of(7, 28))
         assertEquals(LocalTime.of(7, 28), LeaveLightPlan.departureOf(train))

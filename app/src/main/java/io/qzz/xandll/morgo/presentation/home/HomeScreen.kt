@@ -61,6 +61,7 @@ import io.qzz.xandll.morgo.domain.model.AlarmPlan
 import io.qzz.xandll.morgo.domain.model.ConnectionStatus
 import io.qzz.xandll.morgo.domain.model.DayOverrideMode
 import io.qzz.xandll.morgo.domain.model.HomeAssistantEntity
+import io.qzz.xandll.morgo.domain.model.WakeActionList
 import io.qzz.xandll.morgo.presentation.ui.SoftCard
 import io.qzz.xandll.morgo.presentation.ui.sunriseBrush
 import kotlinx.coroutines.delay
@@ -382,18 +383,20 @@ fun SmartHomeCard(
                 Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = MaterialTheme.colorScheme.tertiary)
                 Text("  Smarthome", style = MaterialTheme.typography.titleMedium)
             }
-            if (actions.isEmpty() && entities.isEmpty()) {
+            val items = WakeActionList.resolve(actions, entities)
+            if (items.isEmpty()) {
                 Text(
                     "Beim Wecken passiert hier noch nichts. Home Assistant kannst du unter Smarthome verbinden.",
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                if (actions.isNotEmpty()) {
-                    Text("${actions.size} Aktion${if (actions.size == 1) "" else "en"} beim Wecken", style = MaterialTheme.typography.bodyLarge)
-                }
-                entities.take(3).forEach { entity ->
-                    TextButton(onClick = { onActivate(entity.entityId) }, modifier = Modifier.heightIn(min = 48.dp)) {
-                        Text(entity.name.ifBlank { entity.entityId })
+                Text(
+                    "${items.size} Aktion${if (items.size == 1) "" else "en"} beim Wecken",
+                    style = MaterialTheme.typography.bodyLarge
+                )
+                items.forEach { item ->
+                    TextButton(onClick = { onActivate(item.entityId) }, modifier = Modifier.heightIn(min = 48.dp)) {
+                        Text(item.name)
                     }
                 }
             }

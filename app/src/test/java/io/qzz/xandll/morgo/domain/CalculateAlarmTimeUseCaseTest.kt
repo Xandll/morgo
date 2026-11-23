@@ -310,6 +310,55 @@ class CalculateAlarmTimeUseCaseTest {
     }
 
     @Test
+    fun `preferred train of the lesson is chosen even when hafas returns only three connections`() = runTest {
+        val date = LocalDate.of(2026, 11, 23)
+        val lesson = lessonAt(date, 7, 45)
+        val settings = schoolSettings(
+            wakeRules = listOf(WakeTimeRule(1, LocalTime.of(6, 30), LocalTime.of(7, 4), "R 3")),
+            walkingMinutes = 5
+        )
+        stubHafas(date, lesson, mondayAndWednesdayGrid(), regionalSchedule())
+
+        val plan = useCase.execute(date, settings).getOrNull()
+
+        assertEquals(LocalTime.of(7, 4), plan?.trainConnection?.departure?.plannedTime)
+        assertEquals(LocalTime.of(6, 30), plan?.alarmTime)
+    }
+
+    @Test
+    fun `without a rule the last train that still arrives on time is used`() = runTest {
+        val date = LocalDate.of(2026, 11, 23)
+        val lesson = lessonAt(date, 7, 45)
+        val settings = schoolSettings(wakeRules = emptyList(), walkingMinutes = 5)
+        stubHafas(date, lesson, mondayAndWednesdayGrid(), regionalSchedule())
+
+        val plan = useCase.execute(date, settings).getOrNull()
+
+        assertEquals(LocalTime.of(7, 4), plan?.trainConnection?.departure?.plannedTime)
+        assertEquals(LocalTime.of(6, 34), plan?.alarmTime)
+    }
+
+    @Test
+    fun `trains before wake time plus preparation are ignored`() = runTest {
+        val date = LocalDate.of(2026, 11, 23)
+        val lesson = lessonAt(date, 7, 45)
+        val settings = schoolSettings(
+            wakeRules = listOf(WakeTimeRule(1, LocalTime.of(6, 30))),
+            walkingMinutes = 5
+        )
+        stubHafas(
+            date,
+            lesson,
+            mondayAndWednesdayGrid(),
+            listOf(trainAt(5, 45, 7, 38), trainAt(6, 50, 7, 39))
+        )
+
+        val plan = useCase.execute(date, settings).getOrNull()
+
+        assertNull(plan?.trainConnection)
+    }
+
+    @Test
     fun `returns null when alarm is disabled`() = runTest {
         val date = LocalDate.of(2026, 11, 21)
         val settings = AppSettings(
@@ -322,7 +371,11 @@ class CalculateAlarmTimeUseCaseTest {
         assertNull(result.getOrNull())
     }
 
-    private fun schoolSettings(wakeRules: List<WakeTimeRule>): AppSettings {
+    private fun schoolSettings(
+        wakeRules: List<WakeTimeRule>,
+        walkingMinutes: Int = 10,
+        preparationMinutes: Int = 30
+    ): AppSettings {
         return AppSettings(
             webUntis = WebUntisSettings(
                 server = "test.webuntis.com",
@@ -333,10 +386,40 @@ class CalculateAlarmTimeUseCaseTest {
             train = TrainSettings(
                 startStation = Station("1", "Start"),
                 destinationStation = Station("2", "Ziel"),
-                walkingTimeMinutes = 10,
-                preparationTimeMinutes = 30
+                walkingTimeMinutes = walkingMinutes,
+                preparationTimeMinutes = preparationMinutes
             ),
             alarm = AlarmSettings(enabled = true, wakeTimeRules = wakeRules)
+        )
+    }
+
+    /**
+     * HAFAS liefert nur Verbindungen ab der Suchzeit, höchstens drei pro Anfrage.
+     */
+    private fun stubHafas(
+        date: LocalDate,
+        lesson: Lesson,
+        grid: List<WebUntisTimegrid>,
+        schedule: List<TrainConnection>
+    ) {
+        coEvery { repository.getTimetable(any(), any(), any()) } returns Result.success(listOf(lesson))
+        coEvery { repository.loadTimegrid(any()) } returns Result.success(grid)
+        coEvery { repository.searchConnections(any(), any(), any(), any()) } answers {
+            val time = invocation.args[3] as LocalTime
+            val page = schedule
+                .filter { !it.departure.plannedTime.isBefore(time) }
+                .take(3)
+            Result.success(ConnectionSearchResult(page))
+        }
+    }
+
+    private fun regionalSchedule(): List<TrainConnection> {
+        return listOf(
+            trainAt(5, 45, 6, 25),
+            trainAt(6, 14, 6, 54),
+            trainAt(6, 36, 7, 14),
+            trainAt(7, 4, 7, 40).copy(products = listOf(TrainProduct("R 3", "R", "3"))),
+            trainAt(7, 34, 8, 12)
         )
     }
 

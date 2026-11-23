@@ -70,3 +70,16 @@ object HomeAssistantTargets {
         }
     }
 }
+
+/** Eintrag der Smarthome-Karte: eine Aktion, die beim Wecken läuft. */
+data class WakeActionItem(val entityId: String, val name: String)
+
+object WakeActionList {
+    fun resolve(actions: List<String>, entities: List<HomeAssistantEntity>): List<WakeActionItem> {
+        val byId = entities.associateBy { it.entityId.trim().lowercase() }
+        return actions.map { it.trim() }
+            .filter { it.isNotEmpty() }
+            .distinctBy { it.lowercase() }
+            .map { id -> WakeActionItem(id, byId[id.lowercase()]?.name?.takeIf { it.isNotBlank() } ?: id) }
+    }
+}

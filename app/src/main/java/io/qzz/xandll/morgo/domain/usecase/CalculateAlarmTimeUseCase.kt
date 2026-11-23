@@ -153,7 +153,8 @@ class CalculateAlarmTimeUseCase(
             val trainConnection = findSuitableConnection(
                 date = date,
                 requiredArrivalTime = requiredArrivalTime,
-                settings = settings
+                settings = settings,
+                rule = rules.find { it.lessonNumber == lessonNumber }
             )
 
             val preparation = settings.train.preparationTimeMinutes.toLong()
@@ -206,33 +207,60 @@ class CalculateAlarmTimeUseCase(
     }
 
     /**
-     * Findet eine passende Zugverbindung
+     * Findet den Zug: bevorzugter Zug der Stunde, sonst der letzte rechtzeitige.
+     * HAFAS liefert pro Anfrage nur wenige Verbindungen ab der Suchzeit,
+     * deshalb wird seitenweise weitergesucht.
      */
     private suspend fun findSuitableConnection(
         date: LocalDate,
         requiredArrivalTime: LocalTime,
-        settings: AppSettings
+        settings: AppSettings,
+        rule: WakeTimeRule?
     ): TrainConnection? {
         val startStation = settings.train.startStation ?: return null
         val destinationStation = settings.train.destinationStation ?: return null
 
-        val searchTime = requiredArrivalTime.minusHours(2)
+        val preparation = settings.train.preparationTimeMinutes.toLong()
+        val earliestDeparture = rule?.wakeTime?.plusMinutes(preparation)
+            ?.takeUnless { it.isBefore(rule.wakeTime) } // Mitternachtsüberlauf ignorieren
+        val preferred = rule?.preferredTrainDeparture
+        val line = rule?.preferredTrainLine
 
-        val searchResult = repository.searchConnections(
-            fromStation = startStation,
-            toStation = destinationStation,
-            date = date,
-            time = searchTime
-        ).getOrNull() ?: return null
+        var searchTime = when {
+            preferred != null -> preferred.minusMinutes(5L).takeUnless { it.isAfter(preferred) } ?: LocalTime.MIN
+            earliestDeparture != null -> earliestDeparture
+            else -> requiredArrivalTime.minusHours(2).takeUnless { it.isAfter(requiredArrivalTime) } ?: LocalTime.MIN
+        }
+        val all = mutableListOf<TrainConnection>()
+        for (page in 0 until MAX_SEARCH_PAGES) {
+            val found = repository.searchConnections(
+                fromStation = startStation,
+                toStation = destinationStation,
+                date = date,
+                time = searchTime
+            ).getOrNull()?.connections.orEmpty()
+            val fresh = found.filter { c ->
+                all.none {
+                    it.departure.plannedTime == c.departure.plannedTime &&
+                        it.arrival.plannedTime == c.arrival.plannedTime
+                }
+            }
+            if (fresh.isEmpty()) break
+            all += fresh
+            val lastDeparture = found.maxOf { it.departure.plannedTime }
+            val covered = if (preferred != null) {
+                lastDeparture.isAfter(preferred.plusMinutes(TrainChoice.DEPARTURE_TOLERANCE_MINUTES.toLong()))
+            } else {
+                found.any { (it.arrival.actualTime ?: it.arrival.plannedTime).isAfter(requiredArrivalTime) }
+            }
+            val next = lastDeparture.plusMinutes(1)
+            if (covered || !next.isAfter(searchTime)) break
+            searchTime = next
+        }
+        return TrainChoice.choose(all, requiredArrivalTime, preferred, line, earliestDeparture)
+    }
 
-        return searchResult.connections
-            .filter { it.status != ConnectionStatus.CANCELLED }
-            .filter { 
-                val arrivalTime = it.arrival.actualTime ?: it.arrival.plannedTime
-                arrivalTime.isBefore(requiredArrivalTime) || arrivalTime == requiredArrivalTime
-            }
-            .maxByOrNull { 
-                it.arrival.actualTime ?: it.arrival.plannedTime
-            }
+    private companion object {
+        const val MAX_SEARCH_PAGES = 8
     }
 }

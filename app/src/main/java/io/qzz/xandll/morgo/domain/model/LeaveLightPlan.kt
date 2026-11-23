@@ -72,6 +72,9 @@ object LeaveLightPlan {
 
     fun hint(leave: LocalTime): String = "Licht aus um ${leave.format(clock)}"
 
+    fun hintAfterWake(leave: LocalDateTime, wake: LocalTime): String? =
+        if (leave.toLocalTime().isAfter(wake)) hint(leave.toLocalTime()) else null
+
     /**
      * Stopp am Wecker schaltet das Licht nicht aus.
      * Ohne bekannte Abfahrt gibt es auch keinen Ausschalt-Alarm.

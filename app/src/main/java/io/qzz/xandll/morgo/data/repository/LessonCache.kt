@@ -72,7 +72,7 @@ object LessonCacheCodec {
             val end = runCatching { LocalTime.parse(parts[1]) }.getOrNull() ?: return@mapNotNull null
             val status = runCatching { LessonStatus.valueOf(parts[5]) }.getOrDefault(LessonStatus.REGULAR)
             Lesson(
-                date = LocalDate.EPOCH,
+                date = LocalDate.ofEpochDay(0),
                 startTime = start,
                 endTime = end,
                 subject = parts[2],

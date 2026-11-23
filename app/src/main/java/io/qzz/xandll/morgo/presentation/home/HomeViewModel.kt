@@ -131,7 +131,7 @@ class HomeViewModel @Inject constructor(
             settings.train.walkingTimeMinutes,
             light.leaveOffOffsetMinutes
         )
-        return LeaveLightPlan.hint(at.toLocalTime())
+        return LeaveLightPlan.hintAfterWake(at, plan?.alarmTime ?: return null)
     }
 
     private fun extraLines(plan: AlarmPlan?, alarm: AlarmSettings): List<String> {

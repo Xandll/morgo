@@ -25,6 +25,7 @@ import io.qzz.xandll.morgo.domain.model.LessonSlot
 import io.qzz.xandll.morgo.domain.model.LessonStatus
 import io.qzz.xandll.morgo.domain.model.Station
 import io.qzz.xandll.morgo.domain.model.TrainConnection
+import io.qzz.xandll.morgo.domain.model.TrainProduct
 import io.qzz.xandll.morgo.domain.model.TrainSettings
 import io.qzz.xandll.morgo.domain.model.WakeTimeRule
 import io.qzz.xandll.morgo.domain.model.WebUntisSettings
@@ -60,6 +61,8 @@ class MorgoScreenshotTest {
     @Test fun dashboardQuietDark() = shot("dashboard-quiet-dark", true) { Dashboard(ringing = false, delayed = false) }
     @Test fun dashboardLoadingLight() = shot("dashboard-loading-light", false) { Loading() }
     @Test fun dashboardLoadingDark() = shot("dashboard-loading-dark", true) { Loading() }
+    @Test fun dashboardPreferredLight() = shot("dashboard-bevorzugter-zug-light", false) { PreferredTrain() }
+    @Test fun dashboardPreferredDark() = shot("dashboard-bevorzugter-zug-dark", true) { PreferredTrain() }
 
     @Test fun settingsAlarmLight() = shot("settings-wecker-light", false) { Settings(0) }
     @Test fun settingsAlarmDark() = shot("settings-wecker-dark", true) { Settings(0) }
@@ -95,13 +98,17 @@ class MorgoScreenshotTest {
     }
 
     private fun shot(name: String, dark: Boolean, content: @Composable () -> Unit) {
-        val tall = name.startsWith("abend")
+        val height = when {
+            name.startsWith("abend") -> 920.dp
+            name.startsWith("dashboard-bevorzugter") -> 1100.dp
+            else -> 844.dp
+        }
         paparazzi.snapshot(name = name) {
             MorgoTheme(darkTheme = dark) {
                 if (name.startsWith("licht")) {
                     Surface(Modifier.fillMaxWidth().padding(16.dp)) { content() }
                 } else {
-                    Surface(Modifier.fillMaxWidth().height(if (tall) 920.dp else 844.dp)) { content() }
+                    Surface(Modifier.fillMaxWidth().height(height)) { content() }
                 }
             }
         }
@@ -133,6 +140,48 @@ class MorgoScreenshotTest {
                 extraLines = if (ringing) listOf("05:45 Turnzeug") else emptyList()
             ),
             entities = listOf(HomeAssistantEntity("light.schlafzimmer", "Schlafzimmer", "off", EntityType.LIGHT)),
+            onSettings = {},
+            onRefresh = {},
+            onChangeTomorrow = {},
+            onTurnOff = {},
+            onActivate = {}
+        )
+    }
+
+    @Composable
+    private fun PreferredTrain() {
+        val date = LocalDate.of(2026, 11, 23)
+        val lesson = Lesson(date, LocalTime.of(7, 45), LocalTime.of(8, 30), "Deutsch", "L", "1", LessonStatus.REGULAR)
+        val train = TrainConnection(
+            departure = ConnectionPoint("Heimstadt", LocalTime.of(7, 4), null, "3"),
+            arrival = ConnectionPoint("Schulstadt", LocalTime.of(7, 33), null, "1"),
+            duration = 29,
+            changes = 0,
+            status = ConnectionStatus.ON_TIME,
+            products = listOf(TrainProduct("R 3", "R", "3"))
+        )
+        val plan = AlarmPlan(
+            LocalTime.of(6, 30),
+            "1. Stunde 07:45",
+            lesson,
+            train,
+            rings = true,
+            lessonNumber = 1
+        )
+        MorningDashboard(
+            state = HomeUiState.Ready(
+                date,
+                plan,
+                listOf("light.beispiel_1", "light.beispiel_2"),
+                false,
+                lightHint = "Licht geht um 06:10 an",
+                leaveHint = "Licht aus um 06:54"
+            ),
+            entities = listOf(
+                HomeAssistantEntity("light.beispiel_1", "Beispiel Licht 1", "off", EntityType.LIGHT),
+                HomeAssistantEntity("light.beispiel_2", "Beispiel Licht 2", "off", EntityType.LIGHT),
+                HomeAssistantEntity("light.anderes", "Anderes Licht", "off", EntityType.LIGHT)
+            ),
             onSettings = {},
             onRefresh = {},
             onChangeTomorrow = {},

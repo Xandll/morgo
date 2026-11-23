@@ -76,8 +76,10 @@ object SonaraPlayback {
             return
         }
         val future = MediaController.Builder(context, token).buildAsync()
+        var timedOut = false
         val timeout = Runnable {
             if (mine != ticket) return@Runnable
+            timedOut = true
             MediaController.releaseFuture(future)
             log("Zeit")
             transports(context, music, foregroundStartAllowed, serviceAccepted = false, mine)
@@ -85,7 +87,7 @@ object SonaraPlayback {
         main.postDelayed(timeout, timing.connectMs)
         future.addListener({
             main.removeCallbacks(timeout)
-            if (mine != ticket) return@addListener
+            if (mine != ticket || timedOut) return@addListener
             val connected = runCatching { future.get() }.getOrNull()
             if (connected == null) {
                 log("Verbindung")
