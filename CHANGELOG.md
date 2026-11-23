@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.6.7
+
+- Zugwahl: Ein bevorzugter Zug der Stunde (z. B. 07:04 R 3) gilt jetzt auch für die Zugkarte und den Live-Check. Bisher wurde er ignoriert, die Suche startete zwei Stunden vor der Stunde und las nur drei Verbindungen – so erschien ein Zug, der vor dem Wecken abfuhr. Es wird ab dem bevorzugten Zug gesucht und bei Bedarf nachgeladen; Züge vor Weckzeit plus Vorbereitung zählen nie. Ohne Wunschzug gilt der letzte Zug, der noch rechtzeitig ankommt.
+- Licht aus beim Losgehen erscheint nur, wenn es nach der Weckzeit liegt.
+- Die Smarthome-Karte listet genau die Aktionen beim Wecken, ohne Doppelte.
+- Der Offline-Stundenplan-Cache stürzte auf Android 10 bis 13 ab (LocalDate.EPOCH).
+- Sonara startet bei einem Verbindungs-Timeout nicht mehr doppelt.
+
 ## 1.6.6
 
 - Der Test-Button öffnet den großen Wecker direkt, solange Morgo vorn ist. Sonst bleibt es beim Vollbild-Hinweis. Fehlt die Freigabe ab Android 14, führen die Einstellungen dorthin. Ein entsperrtes Handy in Benutzung zeigt, wie die Google Uhr, nur die Benachrichtigung oben.
